@@ -6,7 +6,7 @@
 
 **Phases:** `spec` (specs repo), `feature` and `code` (project repo), and a fourth `plan` phase (the Blueprint repo) shared by `plan-next`, `audit-design`, `plan-open-pr` and `plan-await-merge` - every owned stage needs a phase for the graph to compose. `plan-next` is handed the phase's worktree but never uses it: it only reads the Blueprint repo and the target codebase, never commits, and never opens a PR - only `audit-design`'s `remedial-filed` outcome does that.
 
-The graph is `workflows/blueprint-delivery.md`; the role prompts are in `steps/*.md`. `spec-writer`, `open-pr`, `await-merge`, `feature-writer`, `review-features`, `implement-features`, `watch-ci`, `review-code`, `resolve-conflict`, `review-ci`, and `handle-feedback` are generic PR/CI machinery, reused unchanged across the spec, feature and code phases. `plan-next`, `audit-design`, and `cleanup` are this workflow's own.
+The graph is `workflows/blueprint-delivery.md`; the role prompts are in `steps/*.md`. `spec-writer`, `open-pr`, `await-merge`, `feature-writer`, `review-features`, `implement-features`, `watch-ci`, `review-code`, `resolve-conflict`, `review-ci`, and `handle-feedback` are generic PR/CI machinery, reused unchanged across the spec, feature and code phases - `watch-ci` and `review-ci` each appear twice, once for the feature PR and once for the code PR. `plan-next`, `audit-design`, and `cleanup` are this workflow's own.
 
 ## Flow
 
@@ -22,14 +22,15 @@ flowchart TD
     end
     SAM -->|spec-merged| FW["feature-writer"]
     subgraph F ["feature phase (project repo)"]
-        FW --> FOP["feature-open-pr"] --> RF["review-features"]
+        FW --> FOP["feature-open-pr"] --> FCI["feature-watch-ci"] --> RF["review-features"]
+        FCI -->|ci-failed| FW
         RF -->|rejected| FW
         RF -->|done| FAM{{"feature-await-merge"}}
         FAM -->|changes| FW
     end
     FAM -->|features-merged| IF["implement-features"]
     subgraph C ["code phase (project repo)"]
-        IF --> COP["code-open-pr"] --> WCI["watch-ci"] --> RC["review-code"]
+        IF --> COP["code-open-pr"] --> WCI["code-watch-ci"] --> RC["review-code"]
         WCI -->|ci-failed| IF
         RC -->|rejected| IF
         RC -->|done| CAM{{"code-await-merge"}}
@@ -58,8 +59,8 @@ flowchart TD
 | --- | --- | --- |
 | `plan-next` | agent | Reads the Blueprint's `plan/` and the codebase at `origin/main` to decide what is genuinely undelivered; names the next work item (never accumulating - each pass replaces it) and routes into the spec/feature/code arc, or into the design audit once nothing remains. Shares the `plan` phase's worktree but never uses it - it never commits and never opens a PR. |
 | `spec-writer` -> `spec-await-merge` | agent / human | Formalizes the selected work item into a spec, opens the spec PR, human reviews and merges. |
-| `feature-writer` -> `feature-await-merge` | agent / human | Derives `@wip` gherkin scenarios from the merged spec, opens the feature PR, an agent primes the human's review. |
-| `implement-features` -> `code-open-pr` -> `watch-ci` -> `review-code` -> `code-await-merge` | agent / agent / agent / agent / human | Code and step defs to turn every scenario green, code PR, CI, review, human merge. |
+| `feature-writer` -> `feature-open-pr` -> `feature-watch-ci` -> `review-features` -> `feature-await-merge` | agent / agent / agent / agent / human | Derives `@wip` gherkin scenarios from the merged spec, opens the feature PR, watches its CI, an agent primes the human's review. The scenarios ship ahead of the bindings that make them pass, so they stay off CI only while the target repo enforces the `@wip` tag - the CI gate is what catches a repo where it does not. |
+| `implement-features` -> `code-open-pr` -> `code-watch-ci` -> `review-code` -> `code-await-merge` | agent / agent / agent / agent / human | Code and step defs to turn every scenario green, code PR, CI, review, human merge. |
 | `cleanup` | you + driver | Tears down this pass's code-phase worktree/branch and continues the loop back to `plan-next` - does not close the item. |
 | `audit-design` | agent | Runs only once `plan-next` finds nothing left. Adversarially assesses the built system against the whole Blueprint design and writes any remedial work items into `plan/`. |
 | `plan-open-pr` -> `plan-await-merge` | agent / human | The Blueprint PR: opens a PR for whatever `audit-design` wrote to `plan/`, human reviews and merges (or requests changes, routing back to `audit-design`). |

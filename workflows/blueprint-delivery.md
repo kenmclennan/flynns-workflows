@@ -9,7 +9,12 @@ One item, one id, delivering an entire Blueprint's `plan/` by looping. `plan-nex
 Blueprint's `plan/` and the target codebase at `origin/main` to decide what is genuinely
 undelivered, names the next work item, and sends it through a spec/feature/code arc - three
 phases, three PRs, three human gates: a spec is written and merged, gherkin scenarios are derived
-from it and merged, then code is implemented to turn every scenario green and merged. Once that
+from it and merged, then code is implemented to turn every scenario green and merged. Both phases
+that put code-repo changes on a PR - feature and code - watch that PR's CI before a reviewer sees
+it, so no human ever gates a red branch. The feature phase needs its own gate as much as the code
+phase does: it ships scenarios written ahead of their bindings, which stay off CI only while the
+repo enforces the `@wip` tag, and that is a property of the target repo rather than of this
+workflow. Once that
 work item's code PR merges, `cleanup` tears down just that pass's code-phase worktree and routes
 back to `plan-next` rather than closing the item - one delivered work item is one pass, not the
 whole item.
@@ -46,16 +51,18 @@ phase:
   spec-await-merge     spec
   feature-writer       feature
   feature-open-pr      feature
+  feature-watch-ci     feature
   review-features      feature
+  feature-review-ci    feature
   feature-await-merge  feature
   implement-features   code
   code-open-pr         code
-  watch-ci             code
+  code-watch-ci        code
   review-code          code
   code-await-merge     code
   cleanup              code
   resolve-conflict     code
-  review-ci            code
+  code-review-ci       code
   handle-feedback      code
   audit-design         plan
   plan-open-pr         plan
@@ -65,8 +72,12 @@ nodes:
   spec-open-pr         open-pr
   spec-await-merge     await-merge
   feature-open-pr      open-pr
+  feature-watch-ci     watch-ci
+  feature-review-ci    review-ci
   feature-await-merge  await-merge
   code-open-pr         open-pr
+  code-watch-ci        watch-ci
+  code-review-ci       review-ci
   code-await-merge     await-merge
   plan-open-pr         open-pr
   plan-await-merge     await-merge
@@ -79,16 +90,18 @@ edges:
   spec-await-merge     changes          spec-writer
   spec-await-merge     spec-merged      feature-writer
   feature-writer       done             feature-open-pr
-  feature-open-pr      done             review-features
+  feature-open-pr      done             feature-watch-ci
+  feature-watch-ci     done             review-features
+  feature-watch-ci     ci-failed        feature-writer
   review-features      done             feature-await-merge
   review-features      rejected         feature-writer
   feature-await-merge  changes          feature-writer
   feature-await-merge  features-merged  implement-features
   implement-features   done             code-open-pr
-  code-open-pr         done             watch-ci
+  code-open-pr         done             code-watch-ci
   code-open-pr         conflicted       resolve-conflict
-  watch-ci             done             review-code
-  watch-ci             ci-failed        implement-features
+  code-watch-ci        done             review-code
+  code-watch-ci        ci-failed        implement-features
   review-code          done             code-await-merge
   review-code          rejected         implement-features
   code-await-merge     merged           cleanup
@@ -120,7 +133,8 @@ hooks:
   pr_conflict           code-await-merge     conflicted
   pr_conflict_cap       code-await-merge     3
   pr_conflict_escalate  code-await-merge     gave-up
-  ci_failed_cap         watch-ci             ci-failed  3  review-ci
+  ci_failed_cap         feature-watch-ci     ci-failed  3  feature-review-ci
+  ci_failed_cap         code-watch-ci        ci-failed  3  code-review-ci
   mention_token         spec-await-merge     @lc
   mention_token         feature-await-merge  @lc
   mention_token         code-await-merge     @lc
@@ -135,7 +149,8 @@ signals:
   review-code          review_rounds     rejected
   review-code          resets            rejected
   code-open-pr         conflicts         ~conflict
-  watch-ci             resets            ci-failed
+  feature-watch-ci     resets            ci-failed
+  code-watch-ci        resets            ci-failed
   code-await-merge     resets            changes
   resolve-conflict     resolve_attempts  escalate
   plan-await-merge     resets            changes
