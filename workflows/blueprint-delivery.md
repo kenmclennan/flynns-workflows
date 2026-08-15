@@ -33,12 +33,13 @@ unused by design, not by omission.
 
 entry: plan-next
 
-requires: brief repo
+requires: brief repo blueprint
 
 workspace:
   plan-next         blueprints
   spec-writer       specs
   spec-open-pr      specs
+  review-spec       specs
   spec-await-merge  specs
   audit-design      blueprints
   plan-open-pr      blueprints
@@ -48,6 +49,7 @@ phase:
   plan-next            plan
   spec-writer          spec
   spec-open-pr         spec
+  review-spec          spec
   spec-await-merge     spec
   feature-writer       feature
   feature-open-pr      feature
@@ -86,7 +88,9 @@ edges:
   plan-next            item-selected    spec-writer
   plan-next            all-delivered    audit-design
   spec-writer          done             spec-open-pr
-  spec-open-pr         done             spec-await-merge
+  spec-open-pr         done             review-spec
+  review-spec          done             spec-await-merge
+  review-spec          rejected         spec-writer
   spec-await-merge     changes          spec-writer
   spec-await-merge     spec-merged      feature-writer
   feature-writer       done             feature-open-pr
@@ -143,6 +147,8 @@ hooks:
 
 signals:
   spec-await-merge     resets            changes
+  review-spec          review_rounds     rejected
+  review-spec          resets            rejected
   review-features      review_rounds     rejected
   review-features      resets            rejected
   feature-await-merge  resets            changes
