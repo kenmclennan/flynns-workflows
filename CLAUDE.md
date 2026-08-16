@@ -12,7 +12,7 @@ Author with the `lightcycle:author-workflow` skill. If this origin has no workfl
 
 ## The gate is the simulator, not a test suite
 
-`lc workflow check <origin>/<name>` (static composition) and the `simulate` CI job (`.github/workflows/simulate.yml`) are what a PR touching `workflows/*.md` or `steps/*.md` must pass. `lc workflow describe <origin>/<name> --mermaid` renders the built graph so a reviewer can confirm it matches the design.
+`lc workflow check <origin>/<name>` (static composition) and the `simulate` CI job (`.github/workflows/simulate.yml`) are what a PR touching `workflows/*.md` or `steps/*.md` must pass. That gate installs the engine at a pinned SHA (`ENGINE_PIN`), so a PR's result depends only on its own diff; a nightly run installs the engine's `main` instead, so upstream drift surfaces as a scheduled failure rather than as a false `ci-failed` rework on an unrelated PR. Bump `ENGINE_PIN` deliberately, and only to a SHA you have watched pass every bundle here. `lc workflow describe <origin>/<name> --mermaid` renders the built graph so a reviewer can confirm it matches the design.
 
 ## Style
 

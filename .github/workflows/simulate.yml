@@ -4,6 +4,11 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+
+env:
+  ENGINE_PIN: 234b6e4f24b8fd09267d54461a6b4406fc80ad26
 
 jobs:
   simulate:
@@ -16,7 +21,18 @@ jobs:
           python-version: "3.x"
 
       - name: Install the lc engine
-        run: pip install "git+https://github.com/kenmclennan/lightcycle@main"
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            ref=main
+            echo "scheduled run: tracking the engine's main to surface upstream drift"
+          else
+            ref="$ENGINE_PIN"
+            echo "gate run: pinned engine $ref, so this result depends only on this diff"
+          fi
+          echo "ENGINE_REF=$ref" >> "$GITHUB_ENV"
+          pip install "git+https://github.com/kenmclennan/lightcycle@$ref"
+          lc --version
 
       - name: Dry-run every workflow in this bundle through the real engine
         run: |
@@ -34,4 +50,7 @@ jobs:
             echo "== lc workflow describe ci-bundle/$name --mermaid =="
             lc workflow describe "ci-bundle/$name" --mermaid || fail=1
           done
+          if [ "$fail" != "0" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "::error::simulate failed against the engine's main ($ENGINE_REF) while the pinned gate is $ENGINE_PIN - this is engine drift, not a bundle defect, until proven otherwise"
+          fi
           exit "$fail"
