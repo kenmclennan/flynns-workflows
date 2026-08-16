@@ -41,7 +41,7 @@ flowchart TD
         COP -->|conflicted| RCF["resolve-conflict"]
         CAM -->|conflicted| RCF
         RCF -->|resolved| COP
-        CAM -->|merged| CU(["cleanup"])
+        CAM -->|merged| CU["cleanup"]
     end
     RCF -->|escalate| RCON{{"review-conflict"}}
     CAM -->|gave-up| RCON
@@ -64,7 +64,7 @@ flowchart TD
 | `spec-writer` -> `spec-open-pr` -> `review-spec` -> `spec-await-merge` | agent / agent / agent / human | Formalizes the selected work item into a spec - deep-linking design-derived requirements to the Blueprint artifact that states them rather than restating them - opens the spec PR, an agent checks the spec for a restated or missing design fact before the human reviews and merges. |
 | `feature-writer` -> `feature-open-pr` -> `feature-watch-ci` -> `review-features` -> `feature-await-merge` | agent / agent / agent / agent / human | Derives `@wip` gherkin scenarios from the merged spec, opens the feature PR, watches its CI, an agent primes the human's review. The scenarios ship ahead of the bindings that make them pass, so they stay off CI only while the target repo enforces the `@wip` tag - the CI gate is what catches a repo where it does not. |
 | `implement-features` -> `code-open-pr` -> `code-watch-ci` -> `review-code` -> `code-await-merge` | agent / agent / agent / agent / human | Code and step defs to turn every scenario green, code PR, CI, review, human merge. |
-| `cleanup` | you + driver | Tears down this pass's code-phase worktree/branch and continues the loop back to `plan-next` - does not close the item. |
+| `cleanup` | agent | Tears down this pass's code-phase worktree/branch and continues the loop back to `plan-next` - does not close the item. |
 | `audit-design` | agent | Runs only once `plan-next` finds nothing left. Adversarially assesses the built system against the whole Blueprint design and writes any remedial work items into `plan/`. |
 | `plan-open-pr` -> `plan-await-merge` | agent / human | The Blueprint PR: opens a PR for whatever `audit-design` wrote to `plan/`, human reviews and merges (or requests changes, routing back to `audit-design`). |
 | `done` | terminal | The Blueprint is fully delivered and the audit found nothing left to remedy. |
