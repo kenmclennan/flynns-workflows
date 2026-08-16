@@ -6,7 +6,9 @@
 
 **Phases:** `spec` (specs repo), `feature` and `code` (project repo), and a fourth `plan` phase (the Blueprint repo) shared by `plan-next`, `audit-design`, `plan-open-pr` and `plan-await-merge` - every owned stage needs a phase for the graph to compose. `plan-next` is handed the phase's worktree but never uses it: it only reads the Blueprint repo and the target codebase, never commits, and never opens a PR - only `audit-design`'s `remedial-filed` outcome does that.
 
-The graph is `workflows/blueprint-delivery.md`; the role prompts are in `steps/*.md`. `spec-writer`, `open-pr`, `await-merge`, `feature-writer`, `review-features`, `implement-features`, `watch-ci`, `review-code`, `resolve-conflict`, `review-ci`, and `handle-feedback` are generic PR/CI machinery, reused unchanged across the spec, feature and code phases - `watch-ci` and `review-ci` each appear twice, once for the feature PR and once for the code PR. `plan-next`, `audit-design`, and `cleanup` are this workflow's own.
+The graph is `workflows/blueprint-delivery.md`; the role prompts are in `steps/*.md`. `spec-writer`, `open-pr`, `await-merge`, `feature-writer`, `review-features`, `implement-features`, `watch-ci`, `review-code`, `resolve-conflict`, `review-ci`, and `handle-feedback` are generic PR/CI machinery, reused unchanged across the spec, feature and code phases - `watch-ci` and `review-ci` each appear twice, once for the feature PR and once for the code PR. `plan-next`, `audit-design`, `cleanup`, and `review-spec` are this workflow's own: `review-spec` checks a spec against the Blueprint it formalizes, a rule with no meaning outside this pipeline's spec/design relationship.
+
+The item requires a `blueprint` artifact naming the Blueprint's location (alongside `brief` and `repo`), filed once at activation and read by `spec-writer`, `review-spec`, and `review-code` throughout the item's life - the same shape as `repo`, not a step-produced artifact.
 
 ## Flow
 
@@ -14,10 +16,11 @@ Node shape shows who runs each stage: `[ agent-step ]` an ephemeral agent claims
 
 ```mermaid
 flowchart TD
-    brief(["brief + repo"]) --> PN
+    brief(["brief + repo + blueprint"]) --> PN
     PN -->|item-selected| SW["spec-writer"]
     subgraph S ["spec phase (specs repo)"]
-        SW --> SOP["spec-open-pr"] --> SAM{{"spec-await-merge"}}
+        SW --> SOP["spec-open-pr"] --> RS["review-spec"] --> SAM{{"spec-await-merge"}}
+        RS -->|rejected| SW
         SAM -->|changes| SW
     end
     SAM -->|spec-merged| FW["feature-writer"]
@@ -58,7 +61,7 @@ flowchart TD
 | Step | Who | Does |
 | --- | --- | --- |
 | `plan-next` | agent | Reads the Blueprint's `plan/` and the codebase at `origin/main` to decide what is genuinely undelivered; names the next work item (never accumulating - each pass replaces it) and routes into the spec/feature/code arc, or into the design audit once nothing remains. Shares the `plan` phase's worktree but never uses it - it never commits and never opens a PR. |
-| `spec-writer` -> `spec-await-merge` | agent / human | Formalizes the selected work item into a spec, opens the spec PR, human reviews and merges. |
+| `spec-writer` -> `spec-open-pr` -> `review-spec` -> `spec-await-merge` | agent / agent / agent / human | Formalizes the selected work item into a spec - deep-linking design-derived requirements to the Blueprint artifact that states them rather than restating them - opens the spec PR, an agent checks the spec for a restated or missing design fact before the human reviews and merges. |
 | `feature-writer` -> `feature-open-pr` -> `feature-watch-ci` -> `review-features` -> `feature-await-merge` | agent / agent / agent / agent / human | Derives `@wip` gherkin scenarios from the merged spec, opens the feature PR, watches its CI, an agent primes the human's review. The scenarios ship ahead of the bindings that make them pass, so they stay off CI only while the target repo enforces the `@wip` tag - the CI gate is what catches a repo where it does not. |
 | `implement-features` -> `code-open-pr` -> `code-watch-ci` -> `review-code` -> `code-await-merge` | agent / agent / agent / agent / human | Code and step defs to turn every scenario green, code PR, CI, review, human merge. |
 | `cleanup` | you + driver | Tears down this pass's code-phase worktree/branch and continues the loop back to `plan-next` - does not close the item. |
