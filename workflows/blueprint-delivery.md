@@ -40,6 +40,7 @@ workspace:
   spec-writer       specs
   spec-open-pr      specs
   review-spec       specs
+  spec-review-rounds  specs
   spec-await-merge  specs
   audit-design      blueprints
   plan-open-pr      blueprints
@@ -50,17 +51,20 @@ phase:
   spec-writer          spec
   spec-open-pr         spec
   review-spec          spec
+  spec-review-rounds   spec
   spec-await-merge     spec
   feature-writer       feature
   feature-open-pr      feature
   feature-watch-ci     feature
   review-features      feature
+  feature-review-rounds  feature
   feature-review-ci    feature
   feature-await-merge  feature
   implement-features   code
   code-open-pr         code
   code-watch-ci        code
   review-code          code
+  code-review-rounds   code
   code-await-merge     code
   cleanup              code
   resolve-conflict     code
@@ -76,6 +80,9 @@ nodes:
   feature-open-pr      open-pr
   feature-watch-ci     watch-ci
   feature-review-ci    review-ci
+  spec-review-rounds     review-rounds
+  feature-review-rounds  review-rounds
+  code-review-rounds     review-rounds
   feature-await-merge  await-merge
   code-open-pr         open-pr
   code-watch-ci        watch-ci
@@ -138,6 +145,9 @@ hooks:
   pr_conflict_cap       code-await-merge     3
   pr_conflict_escalate  code-await-merge     gave-up
   ci_failed_cap         feature-watch-ci     ci-failed  3  feature-review-ci
+  ci_failed_cap         review-spec          rejected   3  spec-review-rounds
+  ci_failed_cap         review-features      rejected   3  feature-review-rounds
+  ci_failed_cap         review-code          rejected   3  code-review-rounds
   ci_failed_cap         code-watch-ci        ci-failed  3  code-review-ci
   mention_token         spec-await-merge     @lc
   mention_token         feature-await-merge  @lc
