@@ -37,22 +37,12 @@ requires: brief repo blueprint
 
 workspace:
   plan-next         blueprints
-  spec-writer       specs
-  spec-open-pr      specs
-  review-spec       specs
-  spec-review-rounds  specs
-  spec-await-merge  specs
   audit-design      blueprints
   plan-open-pr      blueprints
   plan-await-merge  blueprints
 
 phase:
   plan-next            plan
-  spec-writer          spec
-  spec-open-pr         spec
-  review-spec          spec
-  spec-review-rounds   spec
-  spec-await-merge     spec
   feature-writer       feature
   feature-open-pr      feature
   feature-watch-ci     feature
@@ -75,12 +65,9 @@ phase:
   plan-await-merge     plan
 
 nodes:
-  spec-open-pr         open-pr
-  spec-await-merge     await-merge
   feature-open-pr      open-pr
   feature-watch-ci     watch-ci
   feature-review-ci    review-ci
-  spec-review-rounds     review-rounds
   feature-review-rounds  review-rounds
   code-review-rounds     review-rounds
   feature-await-merge  await-merge
@@ -92,14 +79,8 @@ nodes:
   plan-await-merge     await-merge
 
 edges:
-  plan-next            item-selected    spec-writer
+  plan-next            item-selected    feature-writer
   plan-next            all-delivered    audit-design
-  spec-writer          done             spec-open-pr
-  spec-open-pr         done             review-spec
-  review-spec          done             spec-await-merge
-  review-spec          rejected         spec-writer
-  spec-await-merge     changes          spec-writer
-  spec-await-merge     spec-merged      feature-writer
   feature-writer       done             feature-open-pr
   feature-open-pr      done             feature-watch-ci
   feature-watch-ci     done             review-features
@@ -129,15 +110,12 @@ edges:
   plan-await-merge     plan-merged      plan-next
 
 hooks:
-  pr_merge              spec-await-merge     spec-merged
   pr_merge              feature-await-merge  features-merged
   pr_merge              code-await-merge     merged
   pr_merge              plan-await-merge     plan-merged
-  pr_close              spec-await-merge     abandoned
   pr_close              feature-await-merge  abandoned
   pr_close              code-await-merge     abandoned
   pr_close              plan-await-merge     abandoned
-  pr_feedback           spec-await-merge     handle-feedback
   pr_feedback           feature-await-merge  handle-feedback
   pr_feedback           code-await-merge     handle-feedback
   pr_feedback           plan-await-merge     handle-feedback
@@ -145,20 +123,15 @@ hooks:
   pr_conflict_cap       code-await-merge     3
   pr_conflict_escalate  code-await-merge     gave-up
   ci_failed_cap         feature-watch-ci     ci-failed  3  feature-review-ci
-  ci_failed_cap         review-spec          rejected   3  spec-review-rounds
   ci_failed_cap         review-features      rejected   3  feature-review-rounds
   ci_failed_cap         review-code          rejected   3  code-review-rounds
   ci_failed_cap         code-watch-ci        ci-failed  3  code-review-ci
-  mention_token         spec-await-merge     @lc
   mention_token         feature-await-merge  @lc
   mention_token         code-await-merge     @lc
   mention_token         plan-await-merge     @lc
   review_bot_allowlist  code-await-merge     copilot-pull-request-reviewer[bot]
 
 signals:
-  spec-await-merge     resets            changes
-  review-spec          review_rounds     rejected
-  review-spec          resets            rejected
   review-features      review_rounds     rejected
   review-features      resets            rejected
   feature-await-merge  resets            changes

@@ -1,14 +1,14 @@
 # blueprint-delivery
 
-**Delivers a whole Blueprint's `plan/` as one item, by looping.** A Blueprint holds a frozen design plus a living `plan/` of work items. Instead of filing one `lc` item per work item by hand, this workflow files one item - "deliver &lt;blueprint&gt;" - and loops: each pass reads the plan and the built codebase, picks the next undelivered work item, and carries it through a spec/feature/code arc - a spec is written and merged, gherkin scenarios are derived from it and merged, then code is implemented to turn every scenario green and merged. Once that pass's code PR merges, `cleanup` tears down just that pass's worktree and loops back to pick the next item, rather than closing the item. Only once nothing remains does `audit-design` adversarially assess the whole built system against the whole design - not just the item last delivered - and either files remedial work back into `plan/` (routed through a fourth PR the human reviews) or finds the design holds and closes the item.
+**Delivers a whole Blueprint's `plan/` as one item, by looping.** A Blueprint holds a frozen design plus a living `plan/` of work items. Instead of filing one `lc` item per work item by hand, this workflow files one item - "deliver &lt;blueprint&gt;" - and loops: each pass reads the plan and the built codebase, picks the next undelivered work item, and carries it through a feature/code arc - gherkin scenarios are derived from the work item and its design artifacts and merged, then code is implemented to turn every scenario green and merged. There is no spec phase: **the work item IS the specification.** It already states what to deliver, its scope, what done means, and links the artifacts that define each requirement, so a spec between it and the code could only re-express content that already exists in two places. Once that pass's code PR merges, `cleanup` tears down just that pass's worktree and loops back to pick the next item, rather than closing the item. Only once nothing remains does `audit-design` adversarially assess the whole built system against the whole design - not just the item last delivered - and either files remedial work back into `plan/` (routed through a third PR the human reviews) or finds the design holds and closes the item.
 
 **Use it when** you have a Blueprint's design frozen and its `plan/` written, and want the whole plan delivered under one item instead of driving each work item's filing by hand.
 
-**Phases:** `spec` (specs repo), `feature` and `code` (project repo), and a fourth `plan` phase (the Blueprint repo) shared by `plan-next`, `audit-design`, `plan-open-pr` and `plan-await-merge` - every owned stage needs a phase for the graph to compose. `plan-next` is handed the phase's worktree but never uses it: it only reads the Blueprint repo and the target codebase, never commits, and never opens a PR - only `audit-design`'s `remedial-filed` outcome does that.
+**Phases:** `feature` and `code` (project repo), and a `plan` phase (the Blueprint repo) shared by `plan-next`, `audit-design`, `plan-open-pr` and `plan-await-merge` - every owned stage needs a phase for the graph to compose. `plan-next` is handed the phase's worktree but never uses it: it only reads the Blueprint repo and the target codebase, never commits, and never opens a PR - only `audit-design`'s `remedial-filed` outcome does that.
 
-The graph is `workflows/blueprint-delivery.md`; the role prompts are in `steps/*.md`. `spec-writer`, `open-pr`, `await-merge`, `feature-writer`, `review-features`, `implement-features`, `watch-ci`, `review-code`, `resolve-conflict`, `review-ci`, and `handle-feedback` are generic PR/CI machinery, reused unchanged across the spec, feature and code phases - `watch-ci` and `review-ci` each appear twice, once for the feature PR and once for the code PR. `plan-next`, `audit-design`, `cleanup`, and `review-spec` are this workflow's own: `review-spec` checks a spec against the Blueprint it formalizes, a rule with no meaning outside this pipeline's spec/design relationship.
+The graph is `workflows/blueprint-delivery.md`; the role prompts are in `steps/*.md`. `open-pr`, `await-merge`, `feature-writer`, `review-features`, `implement-features`, `watch-ci`, `review-code`, `resolve-conflict`, `review-ci`, `review-rounds` and `handle-feedback` are generic PR/CI machinery, reused across the feature and code phases - `watch-ci`, `review-ci` and `review-rounds` each appear once per phase. `plan-next`, `audit-design` and `cleanup` are this workflow's own.
 
-The item requires a `blueprint` artifact naming the Blueprint's location (alongside `brief` and `repo`), filed once at activation and read by `spec-writer`, `review-spec`, and `review-code` throughout the item's life - the same shape as `repo`, not a step-produced artifact.
+The item requires a `blueprint` artifact naming the Blueprint's location (alongside `brief` and `repo`), filed once at activation and read by `feature-writer`, `implement-features`, `review-features` and `review-code` throughout the item's life - the same shape as `repo`, not a step-produced artifact. `plan-next` writes a `work-item` artifact each pass naming the one being delivered; every downstream stage reads it to find its file under `BLUEPRINT/plan/`.
 
 ## Flow
 
@@ -17,13 +17,7 @@ Node shape shows who runs each stage: `[ agent-step ]` an ephemeral agent claims
 ```mermaid
 flowchart TD
     brief(["brief + repo + blueprint"]) --> PN
-    PN -->|item-selected| SW["spec-writer"]
-    subgraph S ["spec phase (specs repo)"]
-        SW --> SOP["spec-open-pr"] --> RS["review-spec"] --> SAM{{"spec-await-merge"}}
-        RS -->|rejected| SW
-        SAM -->|changes| SW
-    end
-    SAM -->|spec-merged| FW["feature-writer"]
+    PN -->|item-selected| FW["feature-writer"]
     subgraph F ["feature phase (project repo)"]
         FW --> FOP["feature-open-pr"] --> FCI["feature-watch-ci"] --> RF["review-features"]
         FCI -->|ci-failed| FW
@@ -60,9 +54,8 @@ flowchart TD
 
 | Step | Who | Does |
 | --- | --- | --- |
-| `plan-next` | agent | Reads the Blueprint's `plan/` and the codebase at `origin/main` to decide what is genuinely undelivered; names the next work item (never accumulating - each pass replaces it) and routes into the spec/feature/code arc, or into the design audit once nothing remains. Shares the `plan` phase's worktree but never uses it - it never commits and never opens a PR. |
-| `spec-writer` -> `spec-open-pr` -> `review-spec` -> `spec-await-merge` | agent / agent / agent / human | Formalizes the selected work item into a spec - deep-linking design-derived requirements to the Blueprint artifact that states them rather than restating them - opens the spec PR, an agent checks the spec for a restated or missing design fact before the human reviews and merges. |
-| `feature-writer` -> `feature-open-pr` -> `feature-watch-ci` -> `review-features` -> `feature-await-merge` | agent / agent / agent / agent / human | Derives `@wip` gherkin scenarios from the merged spec, opens the feature PR, watches its CI, an agent primes the human's review. The scenarios ship ahead of the bindings that make them pass, so they stay off CI only while the target repo enforces the `@wip` tag - the CI gate is what catches a repo where it does not. |
+| `plan-next` | agent | Reads the Blueprint's `plan/` and the codebase at `origin/main` to decide what is genuinely undelivered; names the next work item (never accumulating - each pass replaces it) and routes into the feature/code arc, or into the design audit once nothing remains. Shares the `plan` phase's worktree but never uses it - it never commits and never opens a PR. |
+| `feature-writer` -> `feature-open-pr` -> `feature-watch-ci` -> `review-features` -> `feature-await-merge` | agent / agent / agent / agent / human | Derives `@wip` gherkin scenarios from the work item and the stories it delivers, opens the feature PR, watches its CI, an agent primes the human's review. The scenarios ship ahead of the bindings that make them pass, so they stay off CI only while the target repo enforces the `@wip` tag - the CI gate is what catches a repo where it does not. |
 | `implement-features` -> `code-open-pr` -> `code-watch-ci` -> `review-code` -> `code-await-merge` | agent / agent / agent / agent / human | Code and step defs to turn every scenario green, code PR, CI, review, human merge. |
 | `cleanup` | agent | Tears down this pass's code-phase worktree/branch and continues the loop back to `plan-next` - does not close the item. |
 | `audit-design` | agent | Runs only once `plan-next` finds nothing left. Adversarially assesses the built system against the whole Blueprint design and writes any remedial work items into `plan/`. |
