@@ -109,6 +109,10 @@ edges:
   plan-await-merge     changes          audit-design
   plan-await-merge     plan-merged      plan-next
 
+pass-end:
+  cleanup           done
+  plan-await-merge  plan-merged
+
 hooks:
   pr_merge              feature-await-merge  features-merged
   pr_merge              code-await-merge     merged
