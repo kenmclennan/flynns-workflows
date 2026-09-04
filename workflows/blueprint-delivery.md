@@ -36,47 +36,53 @@ entry: plan-next
 requires: repo blueprint
 
 workspace:
-  plan-next         blueprints
-  audit-design      blueprints
-  plan-open-pr      blueprints
-  plan-await-merge  blueprints
+  plan-next             blueprints
+  audit-design          blueprints
+  plan-open-pr          blueprints
+  plan-await-merge      blueprints
+  plan-handle-feedback  blueprints
 
 phase:
-  plan-next            plan
-  feature-writer       feature
-  feature-open-pr      feature
-  feature-watch-ci     feature
-  review-features      feature
-  feature-review-rounds  feature
-  feature-review-ci    feature
-  feature-await-merge  feature
-  implement-features   code
-  code-open-pr         code
-  code-watch-ci        code
-  review-code          code
-  code-review-rounds   code
-  code-await-merge     code
-  cleanup              code
-  resolve-conflict     code
-  code-review-ci       code
-  handle-feedback      code
-  audit-design         plan
-  plan-open-pr         plan
-  plan-await-merge     plan
+  plan-next                plan
+  feature-writer           feature
+  feature-open-pr          feature
+  feature-watch-ci         feature
+  review-features          feature
+  feature-review-rounds    feature
+  feature-review-ci        feature
+  feature-await-merge      feature
+  feature-handle-feedback  feature
+  implement-features       code
+  code-open-pr             code
+  code-watch-ci            code
+  review-code              code
+  code-review-rounds       code
+  code-await-merge         code
+  cleanup                  code
+  resolve-conflict         code
+  code-review-ci           code
+  code-handle-feedback     code
+  audit-design             plan
+  plan-open-pr             plan
+  plan-await-merge         plan
+  plan-handle-feedback     plan
 
 nodes:
-  feature-open-pr      open-pr
-  feature-watch-ci     watch-ci
-  feature-review-ci    review-ci
-  feature-review-rounds  review-rounds
-  code-review-rounds     review-rounds
-  feature-await-merge  await-merge
-  code-open-pr         open-pr
-  code-watch-ci        watch-ci
-  code-review-ci       review-ci
-  code-await-merge     await-merge
-  plan-open-pr         open-pr
-  plan-await-merge     await-merge
+  feature-open-pr          open-pr
+  feature-watch-ci         watch-ci
+  feature-review-ci        review-ci
+  feature-review-rounds    review-rounds
+  code-review-rounds       review-rounds
+  feature-await-merge      await-merge
+  feature-handle-feedback  handle-feedback
+  code-open-pr             open-pr
+  code-watch-ci            watch-ci
+  code-review-ci           review-ci
+  code-await-merge         await-merge
+  code-handle-feedback     handle-feedback
+  plan-open-pr             open-pr
+  plan-await-merge         await-merge
+  plan-handle-feedback     handle-feedback
 
 edges:
   plan-next            item-selected    feature-writer
@@ -120,9 +126,9 @@ hooks:
   pr_close              feature-await-merge  abandoned
   pr_close              code-await-merge     abandoned
   pr_close              plan-await-merge     abandoned
-  pr_feedback           feature-await-merge  handle-feedback
-  pr_feedback           code-await-merge     handle-feedback
-  pr_feedback           plan-await-merge     handle-feedback
+  pr_feedback           feature-await-merge  feature-handle-feedback
+  pr_feedback           code-await-merge     code-handle-feedback
+  pr_feedback           plan-await-merge     plan-handle-feedback
   pr_conflict           code-await-merge     conflicted
   pr_conflict_cap       code-await-merge     3
   pr_conflict_escalate  code-await-merge     gave-up
