@@ -33,7 +33,7 @@ unused by design, not by omission.
 
 entry: plan-next
 
-requires: brief repo blueprint
+requires: repo blueprint
 
 workspace:
   plan-next         blueprints
