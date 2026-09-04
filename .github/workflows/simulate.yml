@@ -8,7 +8,7 @@ on:
     - cron: "0 6 * * *"
 
 env:
-  ENGINE_PIN: 9bd2b5777762ae7d575a8f4da2f00795c90c2cdc
+  ENGINE_PIN: 51c3e08a8373e51a628c3b788ab1c62fd10025b9
 
 jobs:
   simulate:
