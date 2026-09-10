@@ -4,11 +4,11 @@ A **workflow origin**: a pullable `lc` source. `source.toml` names it and declar
 
 ## The self-contained-bundle rule
 
-A workflow in this repo may reference only step files inside this same repo (`steps/*.md`) - never a file in another origin, and never the `lc` engine's own `lightcycle/prompts/` (those are the engine's own driver/audit prompts, not workflow content). A bundle that reaches outside itself is not portable: `lc workflow add` pins a single sha, so an external reference resolves against whatever that other location happened to contain at pull time, or nothing at all.
+A workflow in this repo may reference only step files inside this same repo (`steps/*.md`) - never a file in another origin, and never the `lc` engine's own `lightcycle/prompts/` (that is the engine's own prompt for the retro it files itself, not workflow content). A bundle that reaches outside itself is not portable: `lc workflow add` pins a single sha, so an external reference resolves against whatever that other location happened to contain at pull time, or nothing at all.
 
 ## Building a workflow here
 
-Author with the `lightcycle:author-workflow` skill. If this origin has no workflow yet, bootstrap the first one with a generic pipeline (e.g. `spec-driven`) pointed at this repo, the same way `lightcycle-workflows` bootstrapped its own `workflow-authoring` workflow. Model a new graph and its step prompts on bundles already pulled from the `lightcycle` origin (`spec-driven`, `bdd-driven`, `workflow-authoring`) - never on the engine source (`lightcycle/prompts/driver.md` and its neighbors are the engine's own prompts, not a workflow template).
+Author with the `lightcycle:author-workflow` skill. If this origin has no workflow yet, bootstrap the first one with a generic pipeline (e.g. `spec-driven`) pointed at this repo, the same way `lightcycle-workflows` bootstrapped its own `workflow-authoring` workflow. Model a new graph and its step prompts on bundles already pulled from the `lightcycle` origin (`spec-driven`, `bdd-driven`, `workflow-authoring`) - never on the engine source (`lightcycle/prompts/steps/audit.md` is the engine's own prompt for the retro it files itself, not a workflow template).
 
 ## The gate is the simulator, not a test suite
 
