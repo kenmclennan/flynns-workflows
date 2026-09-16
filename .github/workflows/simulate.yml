@@ -10,11 +10,41 @@ on:
 env:
   ENGINE_PIN: 93eb8c01faaf258beb3f5eb5757d57e6803fb763
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   simulate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check ENGINE_PIN staleness against lightcycle main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          threshold=20
+          ahead_by="$(gh api "repos/kenmclennan/lightcycle/compare/${ENGINE_PIN}...main" --jq .ahead_by)"
+          echo "ENGINE_PIN is $ahead_by commit(s) behind kenmclennan/lightcycle main (threshold $threshold)"
+
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            gh label create engine-pin-stale --repo "$GITHUB_REPOSITORY" --color B60205 --description "ENGINE_PIN has drifted past the staleness threshold" || true
+            existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label engine-pin-stale --state open --json number --jq '.[0].number // empty')"
+            if [ "$ahead_by" -gt "$threshold" ]; then
+              body="ENGINE_PIN is $ahead_by commits behind lightcycle main (threshold $threshold).
+
+          File the fix: \`lc new item \"bump ENGINE_PIN ($ahead_by commits behind)\" --workflow lightcycle/bump-engine-pin --repo $GITHUB_REPOSITORY\`"
+              if [ -n "$existing" ]; then
+                gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+              else
+                gh issue create --repo "$GITHUB_REPOSITORY" --title "ENGINE_PIN is stale" --label engine-pin-stale --body "$body"
+              fi
+            elif [ -n "$existing" ]; then
+              gh issue close "$existing" --repo "$GITHUB_REPOSITORY" --comment "ENGINE_PIN is back within threshold ($ahead_by commits behind, threshold $threshold)."
+            fi
+          fi
 
       - uses: actions/setup-python@v5
         with:
