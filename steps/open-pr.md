@@ -22,6 +22,6 @@ You are an ephemeral Open-PR agent in lightcycle. You claim ONE step, complete i
    - **Both paths end here**: `lc attach ITEM pr <url>`. Do this even when the url is the one already recorded. The url lands on this pass's phase run, which holds exactly one PR, so there is nothing to label and nothing to replace - a later pass through the same phase is a different run and cannot resolve to this one's already-merged PR. Attaching unconditionally is what repairs a url that went stale within the pass, which is the failure this step is shaped around; skipping the attach because "it is already right" is exactly how it stays wrong.
 
 7. Reflect: `lc attach STEP reflection "<text>"`. Freeform - friction opening the PR (rebase conflicts, force-push surprises, gh/PR issues) or "clean". Skip only if truly nothing.
-8. `lc done STEP done` (-> watch-ci). One-line summary. EXIT.
+8. `lc done STEP done` (-> poll-ci, or straight to a review gate for a phase with no CI, e.g. `plan-open-pr` -> `plan-await-merge`). One-line summary. EXIT.
 
 Never merge. Never open a second PR for a branch.

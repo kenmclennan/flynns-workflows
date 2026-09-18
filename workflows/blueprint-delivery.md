@@ -46,6 +46,7 @@ phase:
   plan-next                plan
   feature-writer           feature
   feature-open-pr          feature
+  feature-poll-ci          feature
   feature-watch-ci         feature
   review-features          feature
   feature-review-rounds    feature
@@ -54,6 +55,7 @@ phase:
   feature-handle-feedback  feature
   implement-features       code
   code-open-pr             code
+  code-poll-ci             code
   code-watch-ci            code
   review-code              code
   code-review-rounds       code
@@ -69,6 +71,7 @@ phase:
 
 nodes:
   feature-open-pr          open-pr
+  feature-poll-ci          poll-ci
   feature-watch-ci         watch-ci
   feature-review-ci        review-ci
   feature-review-rounds    review-rounds
@@ -76,6 +79,7 @@ nodes:
   feature-await-merge      await-merge
   feature-handle-feedback  handle-feedback
   code-open-pr             open-pr
+  code-poll-ci             poll-ci
   code-watch-ci            watch-ci
   code-review-ci           review-ci
   code-await-merge         await-merge
@@ -88,7 +92,9 @@ edges:
   plan-next            item-selected    feature-writer
   plan-next            all-delivered    audit-design
   feature-writer       done             feature-open-pr
-  feature-open-pr      done             feature-watch-ci
+  feature-open-pr      done             feature-poll-ci
+  feature-poll-ci      succeeded        feature-watch-ci
+  feature-poll-ci      failed           feature-watch-ci
   feature-watch-ci     done             review-features
   feature-watch-ci     ci-failed        feature-writer
   review-features      done             feature-await-merge
@@ -96,8 +102,10 @@ edges:
   feature-await-merge  changes          feature-writer
   feature-await-merge  features-merged  implement-features
   implement-features   done             code-open-pr
-  code-open-pr         done             code-watch-ci
+  code-open-pr         done             code-poll-ci
   code-open-pr         conflicted       resolve-conflict
+  code-poll-ci         succeeded        code-watch-ci
+  code-poll-ci         failed           code-watch-ci
   code-watch-ci        done             review-code
   code-watch-ci        ci-failed        implement-features
   review-code          done             code-await-merge
@@ -132,9 +140,13 @@ hooks:
   pr_conflict           code-await-merge     conflicted
   pr_conflict_cap       code-await-merge     3
   pr_conflict_escalate  code-await-merge     gave-up
+  ci_success            feature-poll-ci      succeeded
+  ci_failure            feature-poll-ci      failed
   ci_failed_cap         feature-watch-ci     ci-failed  3  feature-review-ci
   ci_failed_cap         review-features      rejected   3  feature-review-rounds
   ci_failed_cap         review-code          rejected   3  code-review-rounds
+  ci_success            code-poll-ci         succeeded
+  ci_failure            code-poll-ci         failed
   ci_failed_cap         code-watch-ci        ci-failed  3  code-review-ci
   mention_token         feature-await-merge  @lc
   mention_token         code-await-merge     @lc
