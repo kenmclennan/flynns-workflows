@@ -207,6 +207,28 @@ class DriftTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("could not refresh", proc.stderr)
 
+    def test_changed_url_repoints_the_clone_and_fetches_from_it(self):
+        out = self.guard(None)
+        old_plugin = json.loads(out["state"])["to"]["plugin"]
+        moved = os.path.join(self.root, "moved-plugin")
+        make_repo(moved, {SKILL_PATH: SKILL_BAD})
+        expected = subprocess.run(
+            ["git", "rev-parse", "main"], cwd=moved, capture_output=True, text=True
+        ).stdout.strip()
+        urls = dict(self.paths, plugin=moved)
+        proc = self.run_script("moved.py", json.dumps({"last_state": out["state"]}), urls=urls)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        new_plugin = json.loads(json.loads(proc.stdout)["state"])["to"]["plugin"]
+        self.assertEqual(new_plugin, expected)
+        self.assertNotEqual(new_plugin, old_plugin)
+
+    def test_unfetchable_changed_url_names_both_urls(self):
+        self.guard(None)
+        bad = os.path.join(self.root, "no-such-plugin")
+        proc = self.run_script("drift-maintain.py", urls=dict(self.paths, plugin=bad))
+        self.assertIn(bad, proc.stderr)
+        self.assertIn(self.paths["plugin"], proc.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
