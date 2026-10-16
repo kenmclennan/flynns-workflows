@@ -69,6 +69,30 @@ class TriageTests(unittest.TestCase):
         out = self.guard()
         self.assertIn("@dependabot - (no description)", out["description"])
 
+    def recorded(self, body):
+        rec = os.path.join(self.dir, "rec")
+        os.makedirs(rec)
+        issue = {
+            "number": 1, "title": "T", "author": {"login": "a"}, "url": "u",
+            "body": body, "labels": [], "updatedAt": "2026-10-15T10:00:00Z",
+        }
+        with open(os.path.join(rec, "kenmclennan__lightcycle.json"), "w") as handle:
+            json.dump([issue], handle)
+        os.environ["FAKE_GH_RECORDINGS"] = rec
+        self.addCleanup(os.environ.pop, "FAKE_GH_RECORDINGS", None)
+        return self.guard(repos="kenmclennan/lightcycle")["description"]
+
+    def test_summary_skips_leading_heading(self):
+        self.assertTrue(self.recorded("## What happens\n\nThe gate...").endswith(" - The gate..."))
+
+    def test_summary_defaults_when_body_is_only_headings(self):
+        self.assertTrue(self.recorded("## Problem\n\n### What happens\n---\n<!-- x -->").endswith("(no description)"))
+
+    def test_summary_strips_markup_and_trims(self):
+        text = self.recorded("<!-- hi -->\n**Bold** and [a link](http://x) in `my_var` " + "z" * 200)
+        self.assertIn(" - Bold and a link in my_var zzz", text)
+        self.assertEqual(len(text.rsplit(" - ", 1)[1]), 120)
+
     def test_label_filter_keeps_only_matching(self):
         out = self.guard(labels="bug")
         self.assertIn("#101", out["description"])
