@@ -9,6 +9,8 @@ import sys
 LAYOUT_VERSION = 1
 REPOS = ("engine", "workflows", "plugin")
 KEEP_SNAPSHOTS = 2
+CHANGES_CAP = 200
+CHANGES_REPOS = ("engine", "workflows")
 
 DEFAULT_URLS = {
     "engine": "https://github.com/kenmclennan/lightcycle.git",
@@ -98,6 +100,34 @@ def main_sha(name):
 def commit_count(name, old, new):
     proc = git("rev-list", "--count", "%s..%s" % (old, new), git_dir=clone_path(name), check=False)
     return proc.stdout.decode().strip() if proc.returncode == 0 else "?"
+
+
+def subjects(name, *args):
+    proc = git("log", "--format=%h %s", *args, git_dir=clone_path(name), check=False)
+    if proc.returncode != 0:
+        return None
+    return [l for l in proc.stdout.decode(errors="replace").splitlines() if l]
+
+
+def changes_since(roots_state):
+    old_shas, new_shas = roots_state["from"], roots_state["to"]
+    blocks = []
+    for name in CHANGES_REPOS:
+        old, new = old_shas.get(name), new_shas[name]
+        if old and old == new:
+            blocks.append("%s: no changes" % name)
+            continue
+        lines = subjects(name, "%s..%s" % (old, new)) if old else None
+        if lines is not None:
+            head = "%s: %s -> %s, %d commits" % (name, old, new, len(lines))
+        else:
+            lines = subjects(name, "-n", str(CHANGES_CAP), new) or []
+            if old:
+                head = "%s: %s unreachable, last %d commits" % (name, old, len(lines))
+            else:
+                head = "%s: first review, last %d commits" % (name, len(lines))
+        blocks.append("\n".join([head] + lines))
+    return "\n".join(blocks)
 
 
 def parse_state(raw):
