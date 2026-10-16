@@ -22,7 +22,8 @@ The item ends only once nothing remains to deliver: at that point `audit-design`
 assesses the WHOLE built system against the WHOLE design, not the item just delivered, and either
 files remedial work items into `plan/` - routed through a fourth PR, `plan-open-pr` /
 `plan-await-merge`, the human gate for the audit's own judgment - or finds the design holds and
-closes the item. `open-pr` and `await-merge` each appear four times now, once per phase (spec,
+hands off to `close-item`, a terminal stage with no edges out, which closes the item. The `review-conflict` escalation gate sits in the code phase, as in the official bundles.
+`open-pr` and `await-merge` each appear four times now, once per phase (spec,
 feature, code, plan); `plan-next` and `audit-design` carry this workflow's own subject matter -
 deciding what a Blueprint plan still owes, and auditing a built system against a whole design - and
 are new craft, not reused from anywhere. `plan-next` shares the `plan` phase with `audit-design`,
@@ -41,6 +42,7 @@ workspace:
   plan-open-pr          blueprints
   plan-await-merge      blueprints
   plan-handle-feedback  blueprints
+  close-item            blueprints
 
 phase:
   plan-next                plan
@@ -64,10 +66,16 @@ phase:
   resolve-conflict         code
   code-review-ci           code
   code-handle-feedback     code
+  review-conflict          code
   audit-design             plan
   plan-open-pr             plan
   plan-await-merge         plan
   plan-handle-feedback     plan
+  close-item               plan
+
+display:
+  review-conflict  Resolve conflict
+  close-item       Closing the item
 
 nodes:
   feature-open-pr          open-pr
@@ -116,9 +124,10 @@ edges:
   code-await-merge     gave-up          review-conflict
   resolve-conflict     resolved         code-open-pr
   resolve-conflict     escalate         review-conflict
+  review-conflict      resolved         code-open-pr      primary
   cleanup              done             plan-next
   audit-design         remedial-filed   plan-open-pr
-  audit-design         clean            done
+  audit-design         clean            close-item
   plan-open-pr         done             plan-await-merge
   plan-await-merge     changes          audit-design
   plan-await-merge     plan-merged      plan-next
@@ -126,6 +135,10 @@ edges:
 pass-end:
   cleanup           done
   plan-await-merge  plan-merged
+
+disposition:
+  clean      completed
+  abandoned  abandoned
 
 hooks:
   pr_merge              feature-await-merge  features-merged
