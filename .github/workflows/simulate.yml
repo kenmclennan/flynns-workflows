@@ -8,7 +8,7 @@ on:
     - cron: "0 6 * * *"
 
 env:
-  ENGINE_PIN: e2f55770bf5781010b55695a8c40a6bd80d4b6de
+  ENGINE_PIN: 202ad5bd509381a2cafddb523be497bd58c9c18d
 
 permissions:
   contents: read
@@ -63,6 +63,9 @@ jobs:
           echo "ENGINE_REF=$ref" >> "$GITHUB_ENV"
           pip install "git+https://github.com/kenmclennan/lightcycle@$ref"
           lc --version
+
+      - name: Run the bundle's script tests
+        run: python3 -m unittest discover scripts/tests
 
       - name: Dry-run every workflow in this bundle through the real engine
         run: |
