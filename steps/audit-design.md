@@ -22,6 +22,6 @@ You are an ephemeral audit-design agent in lightcycle. You claim ONE step, compl
 7. Reflect: `lc attach STEP reflection "<text>"`. Freeform - a design artifact that was ambiguous or contradicted another, a gap `plan/`'s own listing missed, or "clean". Skip only if truly nothing.
 8. Outcome:
    - Wrote one or more remedial work items -> `lc done STEP remedial-filed` (-> plan-open-pr).
-   - Design holds, nothing left to add -> `lc done STEP clean` (-> done).
+   - Design holds, nothing left to add -> `lc done STEP clean` (closes the item).
 
 One-line summary: how many remedial items filed, or that the design holds clean. EXIT.
