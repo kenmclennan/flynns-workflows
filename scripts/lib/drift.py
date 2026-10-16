@@ -88,8 +88,15 @@ def ensure_clone(name, fetch=True):
     if not os.path.isdir(path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         git("clone", "--bare", "--quiet", url(name), path)
+    wanted = url(name)
+    current = git("remote", "get-url", "origin", git_dir=path, check=False).stdout.decode().strip()
+    if current != wanted:
+        git("remote", "set-url", "origin", wanted, git_dir=path)
     if fetch:
-        git("fetch", "--quiet", "origin", "+main:main", git_dir=path)
+        try:
+            git("fetch", "--quiet", "origin", "+main:main", git_dir=path)
+        except RuntimeError as exc:
+            raise RuntimeError("%s (configured %s, clone was made from %s)" % (exc, wanted, current or "unknown")) from None
     return path
 
 
