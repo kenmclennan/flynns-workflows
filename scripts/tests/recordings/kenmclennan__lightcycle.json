@@ -4,7 +4,7 @@
     "title": "Inbox hides parked steps",
     "author": { "login": "alice" },
     "url": "https://github.com/kenmclennan/lightcycle/issues/101",
-    "body": "\n  Parked steps do not show in lc inbox.\nMore detail below.",
+    "body": "## What happens\n\n  Parked steps do not show in lc inbox.\nMore detail below.",
     "labels": [{ "name": "bug" }],
     "updatedAt": "2026-10-15T10:00:00Z"
   },

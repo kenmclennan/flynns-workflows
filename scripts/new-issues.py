@@ -2,6 +2,7 @@
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -12,9 +13,18 @@ import triage_state
 FIELDS = "number,title,author,url,body,labels,updatedAt"
 
 
+RULE = re.compile(r"^([-*_])(\s*\1){2,}$")
+LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+EMPHASIS = re.compile(r"(\*\*|~~|`)|(?<!\w)(__|_)(?=\S)|(?<=\S)(__|_)(?!\w)|\*")
+
+
 def summary(body):
-    for line in (body or "").splitlines():
+    text = re.sub(r"<!--.*?-->", "", body or "", flags=re.DOTALL)
+    for line in text.splitlines():
         line = line.strip()
+        if not line or line.startswith("#") or RULE.match(line):
+            continue
+        line = EMPHASIS.sub("", LINK.sub(r"\1", line)).strip()
         if line:
             return line[:120]
     return "(no description)"
