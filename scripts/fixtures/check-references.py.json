@@ -1,0 +1,16 @@
+{
+  "clean": {
+    "outcome": "clean",
+    "artifacts": {
+      "missing-references": "none",
+      "review-context": "engine: snapshot /data/snapshots/engine-5d6e7f8\n  bare clone /data/repos/engine.git\n  from 1a2b3c4 to 5d6e7f8\nskills: /data/snapshots/plugin-9a8b7c6/plugins/lightcycle/skills"
+    }
+  },
+  "misses": {
+    "outcome": "misses",
+    "artifacts": {
+      "missing-references": "plugins/lightcycle/skills/driver/SKILL.md:12: verb `frobnicate` not found in engine",
+      "review-context": "engine: snapshot /data/snapshots/engine-5d6e7f8\n  bare clone /data/repos/engine.git\n  from 1a2b3c4 to 5d6e7f8\nskills: /data/snapshots/plugin-9a8b7c6/plugins/lightcycle/skills"
+    }
+  }
+}

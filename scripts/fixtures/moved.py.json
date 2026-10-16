@@ -1,0 +1,12 @@
+{
+  "pass": {
+    "outcome": "pass",
+    "title": "Review plugin skills: engine and plugin moved",
+    "description": "engine: 1a2b3c4 -> 5d6e7f8 (3 commit(s))\nplugin: first review at 9a8b7c6",
+    "state": "{\"from\": {\"engine\": \"1a2b3c4\", \"plugin\": null, \"workflows\": \"0f0f0f0\"}, \"to\": {\"engine\": \"5d6e7f8\", \"plugin\": \"9a8b7c6\", \"workflows\": \"0f0f0f0\"}}"
+  },
+  "fail": {
+    "outcome": "fail",
+    "note": "no repo moved"
+  }
+}
