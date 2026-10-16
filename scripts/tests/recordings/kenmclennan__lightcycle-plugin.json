@@ -1,0 +1,11 @@
+[
+  {
+    "number": 7,
+    "title": "Hook fails on fresh machine",
+    "author": { "login": "bob" },
+    "url": "https://github.com/kenmclennan/lightcycle-plugin/issues/7",
+    "body": "SessionStart hook exits non-zero.",
+    "labels": [],
+    "updatedAt": "2026-10-16T08:30:00Z"
+  }
+]

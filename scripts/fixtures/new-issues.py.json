@@ -1,0 +1,12 @@
+{
+  "pass": {
+    "outcome": "pass",
+    "title": "Triage 2 new GitHub issue(s) on 1 repo(s)",
+    "description": "kenmclennan/lightcycle\n- [kenmclennan/lightcycle#101](https://github.com/kenmclennan/lightcycle/issues/101) Inbox hides parked steps - @alice - Parked steps do not show in lc inbox.\n- [kenmclennan/lightcycle#103](https://github.com/kenmclennan/lightcycle/issues/103) Doctor misses config - @bob - (no description)",
+    "state": "{\"issues\": [{\"number\": 101, \"repo\": \"kenmclennan/lightcycle\"}, {\"number\": 103, \"repo\": \"kenmclennan/lightcycle\"}], \"marks\": {\"kenmclennan/lightcycle\": \"2026-10-15T11:00:00Z\"}}"
+  },
+  "fail": {
+    "outcome": "fail",
+    "note": "no new issues"
+  }
+}
