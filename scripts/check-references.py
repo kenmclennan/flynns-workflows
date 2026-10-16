@@ -49,6 +49,7 @@ def main():
             "artifacts": {
                 "missing-references": "\n".join(misses) if misses else "none",
                 "review-context": "\n".join(context),
+                "changes-since": drift.changes_since(state),
             },
         }
     )

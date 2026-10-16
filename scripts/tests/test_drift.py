@@ -118,6 +118,64 @@ class DriftTests(unittest.TestCase):
         out = self.check(self.guard(first["state"])["state"])
         self.assertIn("diff --stat", out["artifacts"]["review-context"])
 
+    def changes(self, out):
+        return out["artifacts"]["changes-since"]
+
+    def test_first_run_lists_engine_and_workflows_subjects_only(self):
+        commit(self.paths["engine"], {"lightcycle/more.py": "X = 1\n"}, msg="feat: engine two")
+        commit(self.paths["plugin"], {SKILL_PATH: SKILL_OK + "p\n"}, msg="feat: plugin two")
+        text = self.changes(self.check(self.guard(None)["state"]))
+        self.assertIn("engine: first review, last 2 commits", text)
+        self.assertIn("workflows: first review, last 1 commits", text)
+        self.assertIn("feat: engine two", text)
+        self.assertNotIn("plugin two", text)
+
+    def test_move_lists_only_commits_between_from_and_to_newest_first(self):
+        first = self.guard(None)
+        commit(self.paths["engine"], {"lightcycle/a.py": "A = 1\n"}, msg="feat: older")
+        commit(self.paths["engine"], {"lightcycle/b.py": "B = 1\n"}, msg="feat: newer")
+        text = self.changes(self.check(self.guard(first["state"])["state"]))
+        engine = text.split("workflows:")[0]
+        self.assertIn(", 2 commits", engine)
+        self.assertLess(engine.index("feat: newer"), engine.index("feat: older"))
+        self.assertNotIn("change", engine.split("\n", 1)[1])
+        self.assertIn("workflows: no changes", text)
+
+    def test_unreachable_from_falls_back_and_says_so(self):
+        state = self.guard(None)["state"]
+        parsed = json.loads(state)
+        parsed["from"]["engine"] = "0" * 40
+        text = self.changes(self.check(json.dumps(parsed)))
+        self.assertIn("engine: %s unreachable, last 1 commits" % ("0" * 40), text)
+
+    def test_cap_limits_the_first_review_listing(self):
+        for i in range(3):
+            commit(self.paths["engine"], {"lightcycle/n%d.py" % i: "N = 1\n"}, msg="feat: n%d" % i)
+        state = self.guard(None)["state"]
+        sys.path.insert(0, os.path.join(SCRIPTS, "lib"))
+        import drift
+        self.addCleanup(setattr, drift, "CHANGES_CAP", drift.CHANGES_CAP)
+        drift.CHANGES_CAP = 2
+        os.environ["LC_WORKFLOW_DATA_DIR"] = self.data
+        self.addCleanup(os.environ.pop, "LC_WORKFLOW_DATA_DIR")
+        os.environ["LC_WORKFLOW_CONFIG_ENGINE_URL"] = self.paths["engine"]
+        self.addCleanup(os.environ.pop, "LC_WORKFLOW_CONFIG_ENGINE_URL")
+        drift.ensure_clone("engine")
+        parsed = drift.parse_state(state)
+        text = drift.changes_since({"from": {}, "to": parsed["to"]})
+        self.assertIn("engine: first review, last 2 commits", text)
+        self.assertIn("feat: n2", text)
+        self.assertNotIn("feat: n0", text)
+
+    def test_changes_since_is_present_on_clean_and_misses(self):
+        clean = self.check(self.guard(None)["state"])
+        self.assertEqual(clean["outcome"], "clean")
+        self.assertIn("changes-since", clean["artifacts"])
+        commit(self.paths["plugin"], {SKILL_PATH: SKILL_BAD})
+        misses = self.check(self.guard(None)["state"])
+        self.assertEqual(misses["outcome"], "misses")
+        self.assertIn("changes-since", misses["artifacts"])
+
     def test_install_with_unreachable_url_warns_and_exits_zero(self):
         urls = {n: os.path.join(self.root, "no-such-" + n) for n in self.paths}
         proc = self.run_script("drift-install.py", urls=urls)
