@@ -1,0 +1,12 @@
+{
+  "pass": {
+    "outcome": "pass",
+    "title": "Audit the knowledgebase at 0123456",
+    "description": "Knowledgebase main is at 0123456: 4 commit(s) since 89abcde.",
+    "state": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "fail": {
+    "outcome": "fail",
+    "note": "tip unchanged"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "measured": {
+    "outcome": "measured",
+    "artifacts": {
+      "measurements": "unresolved-link: topic-b/one.md - ../topic-a/missing.md\nisland-topic: island - no link in or out to another topic\n\nprettier references: 12 file(s)\nmarkdownlint references: 340 error(s)",
+      "review-context": "snapshot: /data/snapshot\nsha: 0123456789abcdef0123456789abcdef01234567\npreviously audited: first audit"
+    },
+    "note": "2 defect(s)"
+  }
+}
