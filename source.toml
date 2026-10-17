@@ -1,4 +1,4 @@
 name = "flynns-workflows"
 contract = 1
 description = "Personal workflow origin: flynns-workflows."
-requires-engine = ">=0.6.335"
+requires-engine = ">=0.6.353"

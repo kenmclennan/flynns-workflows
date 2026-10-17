@@ -1,3 +1,7 @@
+---
+presents: artifact:findings
+---
+
 # Review-findings (you + driver)
 
 One item lists where the lightcycle plugin's skills have drifted from the current engine and official workflows. The workflow files nothing itself: you decide what becomes work.
