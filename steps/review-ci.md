@@ -1,3 +1,7 @@
+---
+presents: pr
+---
+
 # Review-ci (you + driver)
 
 CI has failed on this item enough times that the phase's author agent kept reworking it without landing a green run - `implement-features` on a code PR, `feature-writer` on a PR of gherkin scenarios. It is not converging on its own; a human needs to look at the accumulated failure notes and decide what happens next. `lc show STEP` carries `.phase`, which tells you which PR this is.

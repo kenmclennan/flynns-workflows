@@ -1,3 +1,7 @@
+---
+presents: pr
+---
+
 # Review-rounds (you + driver)
 
 A reviewer has rejected this phase's work enough times that the author is not converging on its own. Rather than let the reject/rework loop run unbounded and unseen, the cap routes it here so a human decides what happens next.

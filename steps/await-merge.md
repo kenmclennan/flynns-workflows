@@ -1,3 +1,7 @@
+---
+presents: pr
+---
+
 # Await-merge (you + driver)
 
 A PR is green, comments resolved, and rebased on the tip of main - ready to merge. You merge it (lightcycle never merges for you); the driver runs this skill to set it up and record the outcome.
