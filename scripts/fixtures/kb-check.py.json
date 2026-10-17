@@ -1,0 +1,13 @@
+{
+  "clean": {
+    "outcome": "clean",
+    "note": "3 file(s) checked"
+  },
+  "broken": {
+    "outcome": "broken",
+    "artifacts": {
+      "check-report": "agent-tooling/new-concept.md: relative link ../missing.md does not resolve\nagent-tooling/new-concept.md: not reachable from index.md by following links"
+    },
+    "note": "2 failure(s) in 3 file(s)"
+  }
+}
