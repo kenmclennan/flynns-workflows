@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Martin Fowler</title>
+  <entry>
+    <title>Agent guardrails</title>
+    <link href="https://martinfowler.com/articles/guardrails.html" rel="alternate"/>
+    <published>2026-10-14T09:00:00Z</published>
+    <author><name>Martin Fowler</name></author>
+  </entry>
+  <entry>
+    <title>Reading agent output</title>
+    <link href="https://martinfowler.com/articles/reading-output.html" rel="alternate"/>
+    <published>2026-10-15T09:00:00Z</published>
+    <author><name>Martin Fowler</name></author>
+  </entry>
+</feed>

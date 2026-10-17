@@ -1,0 +1,12 @@
+{
+  "pass": {
+    "outcome": "pass",
+    "title": "Scout: 2 new entries, 0 waiting",
+    "description": "https://martinfowler.com/feed.atom\n- [Agent guardrails](https://martinfowler.com/articles/guardrails.html) - Martin Fowler\n- [Reading agent output](https://martinfowler.com/articles/reading-output.html) - Martin Fowler\n\n0 candidate(s) or survivor(s) already waiting.",
+    "state": "{\"entries\": [{\"author\": \"Martin Fowler\", \"feed\": \"https://martinfowler.com/feed.atom\", \"published\": \"2026-10-14T09:00:00Z\", \"title\": \"Agent guardrails\", \"url\": \"https://martinfowler.com/articles/guardrails.html\"}, {\"author\": \"Martin Fowler\", \"feed\": \"https://martinfowler.com/feed.atom\", \"published\": \"2026-10-15T09:00:00Z\", \"title\": \"Reading agent output\", \"url\": \"https://martinfowler.com/articles/reading-output.html\"}], \"marks\": {\"https://martinfowler.com/feed.atom\": \"2026-10-15T09:00:00Z\"}}"
+  },
+  "fail": {
+    "outcome": "fail",
+    "note": "no new entries and nothing waiting"
+  }
+}
