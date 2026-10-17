@@ -1,0 +1,11 @@
+{
+  "survivors": {
+    "outcome": "survivors",
+    "artifacts": {
+      "candidates-digest": "File each accepted candidate as a kb-ingest item: lc new item \"<title>\" --workflow flynns-workflows/kb-ingest --repo kenmclennan/knowledgebase\n\n- Agent guardrails\n  link: https://martinfowler.com/articles/guardrails.html\n  author: Martin Fowler\n  tier 1, inbound trusted links 0, score 9.40\n  summary: How to bound what an agent may do without blocking it.\n  knowledgebase already has: nothing close"
+    }
+  },
+  "none": {
+    "outcome": "none"
+  }
+}

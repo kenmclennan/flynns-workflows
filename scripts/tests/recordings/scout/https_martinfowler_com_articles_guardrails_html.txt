@@ -1,0 +1,5 @@
+<html><body>
+<nav><a href="https://example.org/nav-only">menu</a></nav>
+<p>See <a href="https://example.org/third/">the third page</a>, <a href="/articles/other.html">our other article</a>,
+<a href="https://example.org/third#section">again</a> and <a href="mailto:a@b.c">mail</a>.</p>
+</body></html>

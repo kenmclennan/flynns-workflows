@@ -1,0 +1,8 @@
+{
+  "harvested": {
+    "outcome": "harvested",
+    "artifacts": {
+      "candidates": "{\n  \"batch_cap\": 10,\n  \"candidates\": [\n    {\n      \"author\": \"Martin Fowler\",\n      \"feed\": \"https://martinfowler.com/feed.atom\",\n      \"inbound\": 0,\n      \"tier\": 1,\n      \"title\": \"Agent guardrails\",\n      \"url\": \"https://martinfowler.com/articles/guardrails.html\"\n    },\n    {\n      \"author\": \"\",\n      \"feed\": \"https://martinfowler.com/feed.atom\",\n      \"inbound\": 1,\n      \"tier\": 2,\n      \"title\": \"\",\n      \"url\": \"https://example.org/third\"\n    }\n  ],\n  \"kb_checkout\": \"none\",\n  \"qmd\": \"qmd\"\n}"
+    }
+  }
+}
