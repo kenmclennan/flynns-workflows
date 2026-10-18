@@ -4,7 +4,7 @@ accepts:
   scores: required
 produces:
   candidates-digest: optional
-detail: [outcome, out:candidates-digest]
+detail: [outcome, out:candidates-digest, needs, reason]
 ---
 
 # Rank

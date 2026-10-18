@@ -2,7 +2,7 @@
 script: scripts/record-decisions.py
 accepts:
   decisions: required
-detail: [outcome, report]
+detail: [outcome, report, needs, reason]
 ---
 
 # Record-decisions

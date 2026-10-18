@@ -3,7 +3,7 @@ script: scripts/kb-measure.py
 produces:
   measurements: optional
   review-context: optional
-detail: [outcome, out:measurements]
+detail: [outcome, out:measurements, needs, reason]
 ---
 
 # Measure
