@@ -2,6 +2,7 @@
 presents: pr
 produces:
   pr: required
+detail: [pr, report, outcome]
 ---
 
 # Await-merge (you + driver)

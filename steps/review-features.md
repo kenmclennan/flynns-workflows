@@ -4,6 +4,7 @@ accepts:
   work-item: optional
   blueprint: required
   branch: required
+detail: [report, outcome, pr]
 ---
 
 # Review-features

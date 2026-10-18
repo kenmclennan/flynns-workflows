@@ -2,6 +2,7 @@
 script: scripts/harvest.py
 produces:
   candidates: required
+detail: [outcome, out:candidates]
 ---
 
 # Harvest

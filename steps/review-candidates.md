@@ -1,7 +1,8 @@
 ---
-presents: artifact:candidates-digest
+presents: in:candidates-digest
 produces:
   decisions: required
+detail: [in:candidates-digest, report, outcome]
 ---
 
 # Review-candidates (you + driver)

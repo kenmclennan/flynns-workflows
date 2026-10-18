@@ -4,6 +4,7 @@ accepts:
   plan: optional
 produces:
   branch: required
+detail: [report, outcome, branch, pr]
 ---
 
 # Write
@@ -12,7 +13,7 @@ You are an ephemeral write agent in lightcycle. You claim ONE step, complete it,
 
 1. CLAIM: `lc claim write`. If nothing, say "no work" and EXIT. The printed JSON is your step; take `.id` as STEP, `.item` as ITEM, `.workspace` as WORKSPACE, and `.branch` as BRANCH. Read the `plan` artifact from the item (`lc show ITEM`); if it is absent, park with `lc set STEP --state waiting --needs "the item carries no plan artifact" --reason "write needs the approved plan"` and EXIT.
 2. WORKSPACE: `cd WORKSPACE`. Run `git fetch origin`, then `git rebase origin/main`. Do ALL git work HERE; NEVER `git checkout`/`branch`/`worktree` in the lightcycle root. Read `WORKSPACE/CLAUDE.md` - it defines the concept document shape, frontmatter, the mirror-first rule, relative links and the cross-link scan. Follow it; do not rely on this step to restate it.
-3. **Rework.** `lc show STEP` and `lc trace ITEM` say why this step is here again. Read the one that applies and fix exactly that: the `check-report` on the last `check` step (one line per failure, file and reason), the `review` rejection note, the CI failure `watch-ci` forwarded, or the `changes` note from `await-merge`. A rework changes the branch; it does not widen the plan.
+3. **Rework.** The claim's `.inputs.previous.report` and `lc trace ITEM` say why this step is here again. Read the one that applies and fix exactly that: the `check-report` on the last `check` step (one line per failure, file and reason), the `review` rejection note, the CI failure `watch-ci` reported, or the `changes` note from `await-merge`. A rework changes the branch; it does not widen the plan.
 4. Build the plan in this order, each part exactly as named:
    - Mirror the source into `references/` first, as the plan names it: frontmatter `type: Reference`, `resource`, `author`, `retrieved_at`; headings demoted so the mirror's title is the only level 1; any fenced block inside the source nested in a longer fence. A mirror is a copy: do not summarise or correct it.
    - Write each new concept doc: synthesise, never paste, with `sources` pointing at the `references/` file and a body link to it.

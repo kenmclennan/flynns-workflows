@@ -27,7 +27,7 @@ A schedule guard fetches every enabled trusted feed and passes when any has entr
 
 Trust propagates along links: the agent never evaluates anything a trusted author did not point at. The state - feeds, everything seen, every decision - lives in a SQLite file in the workflow's data directory, never in the knowledgebase, so a record of what was declined does not sit next to the material an agent is meant to use. `scripts/scout-cli.py` reads it, so the gate can answer why a source was passed over last time.
 
-`harvest` and `evaluate` declare the knowledgebase as their workspace: the dedupe reads `references/` from a clean worktree at `origin/main`. An agent stage gets neither the data directory nor the guard's state, so `harvest` attaches a `candidates` artifact to its own step, and `rank` attaches `candidates-digest` for the gate. An abandoned gate records nothing, so undecided survivors resurface at the next firing. The workflow runs once per firing and closes with the item, so it has one pass and no PR.
+`harvest` and `evaluate` declare the knowledgebase as their workspace: the dedupe reads `references/` from a clean worktree at `origin/main`. An agent stage gets neither the data directory nor the guard's state, so `harvest` produces a `candidates` artifact that `evaluate` reads from the `inputs` of its claim, and `rank` attaches `candidates-digest` for the gate. An abandoned gate records nothing, so undecided survivors resurface at the next firing. The workflow runs once per firing and closes with the item, so it has one pass and no PR.
 
 The `schedule:` block is a suggestion. The bundle never enables it; an operator does, in config.
 

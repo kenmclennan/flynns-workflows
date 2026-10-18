@@ -5,6 +5,7 @@ accepts:
   blueprint: required
 produces:
   branch: required
+detail: [report, outcome, branch, pr]
 ---
 
 # Feature-writer

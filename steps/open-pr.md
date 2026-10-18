@@ -5,6 +5,7 @@ accepts:
 produces:
   pr: required
   branch: required
+detail: [pr, branch, report, outcome]
 ---
 
 # Open-PR
