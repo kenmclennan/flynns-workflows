@@ -1,6 +1,7 @@
 ---
 escalation: true
 presents: pr
+detail: [pr, in:report, outcome]
 ---
 
 # Review-conflict (you + driver)
@@ -9,7 +10,7 @@ presents: pr
 
 `review-conflict` only routes onward on `resolved` - closing it any other way, or leaving it as the item's only open step, ends the item outright rather than re-entering the PR/CI cycle.
 
-1. `lc show STEP` - if `resolve-conflict` forwarded an escalation note, it explains what is ambiguous or what kept failing after a prior rebase attempt. If this step opened instead because the PR's own conflict-retry cap was hit directly, there may be no note - check the PR's conflict markers on the branch itself.
+1. `lc show STEP` - if `resolve-conflict` reported an escalation, `.inputs.previous.report` explains what is ambiguous or what kept failing after a prior rebase attempt. If this step opened instead because the PR's own conflict-retry cap was hit directly, there may be no report - check the PR's conflict markers on the branch itself.
 2. The item's branch is already checked out in its own worktree (`.worktrees/ITEM` in the target repo). `cd` there, `git fetch origin`, then `git rebase origin/main`.
 3. Reconcile any conflicts by hand, preserving both sides' intent - the same discipline `resolve-conflict` itself follows. Run the repo's own test command to confirm the rebase is clean (read it from the repo - its CI workflow, README, or build file - never from memory).
 4. Decide:

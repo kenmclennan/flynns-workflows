@@ -1,5 +1,6 @@
 ---
 presents: pr
+detail: [pr, in:report, outcome]
 ---
 
 # Review-ci (you + driver)
@@ -8,7 +9,7 @@ CI has failed on this item enough times that the phase's author agent kept rewor
 
 **Read this before running anything.** This stage has no outgoing route. `lc done STEP <anything>` therefore creates no next step, and if this is the item's only open step the engine cascades: the item closes and every branch it recorded is deleted, **local and remote**, including the head branch of the failing PR. That is the correct behaviour only when you mean to abandon the whole Blueprint delivery. It is not an acknowledgement, and there is no undo.
 
-1. `lc show STEP` - the forwarded note carries the latest failing job/test; `lc trace ITEM` shows every prior `ci-failed` note in sequence.
+1. `lc show STEP` - `.inputs.previous.report` carries the latest failing job/test; `lc trace ITEM` shows every prior `ci-failed` note in sequence.
 2. Read what the sequence is telling you, because the two shapes need opposite responses. **The same job and test failing every round** means the fix keeps landing at the wrong layer, or the failing test encodes a requirement the work item and the scenarios never state - change the input, not the author. **A different failure each round** is either a broad surface being worked through legitimately, or a branch going stale against a moving main; check whether each failure followed a rebase before concluding the author is at fault. Read the author's own reflections (`lc show` on the failed steps) - they are the best evidence for which it is.
 3. Decide, and use the matching mechanism - they are not interchangeable:
    - **Fix it by hand.** Push to the branch yourself. CI re-runs on the push; leave this step open while it does, and treat the result as new evidence rather than completing here.

@@ -4,6 +4,7 @@ accepts:
   branch: required
 produces:
   check-report: optional
+detail: [outcome, out:check-report]
 ---
 
 # Check

@@ -1,6 +1,7 @@
 ---
 escalation: true
-presents: description
+presents: in:description
+detail: [in:description, in:report, outcome]
 ---
 
 # Escalate (you + driver)

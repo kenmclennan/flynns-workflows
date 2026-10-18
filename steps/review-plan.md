@@ -1,5 +1,6 @@
 ---
-presents: artifact:plan
+presents: in:plan
+detail: [in:plan, report, outcome]
 ---
 
 # Review-plan (you + driver)

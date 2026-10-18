@@ -1,5 +1,6 @@
 ---
 model: sonnet
+detail: [report, outcome]
 ---
 
 # Cleanup

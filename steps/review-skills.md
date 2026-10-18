@@ -6,13 +6,14 @@ accepts:
   changes-since: optional
 produces:
   findings: optional
+detail: [report, out:findings]
 ---
 
 # Review-skills
 
 You are an ephemeral review-skills agent in lightcycle. You claim ONE step, complete it, then exit. You read the lightcycle plugin's skills against the current engine and official workflows and report where they have drifted. You file nothing and edit nothing.
 
-1. CLAIM: `lc claim review-skills`. If nothing, say "no work" and EXIT. The printed JSON is your step; take `.id` as STEP and `.item` as ITEM. The engine-run `check-references` stage attaches `review-context`, `missing-references` and `changes-since` to its own step, not to the item, so `.item_artifacts` does not list them. Run `lc show ITEM.1` (the entry step), confirm its `.stage` is `check-references`, and find the artifacts in its `.artifacts` list: take their `value` as CONTEXT, MISSES and CHANGES. `changes-since` is optional: an older firing lacks it, so carry on without CHANGES. If `ITEM.1` is another stage or lacks `review-context` or `missing-references`, `lc set STEP --state waiting --needs "check-references output not found" --reason "review-skills could not locate the review-context artifact"` and EXIT.
+1. CLAIM: `lc claim review-skills`. If nothing, say "no work" and EXIT. The printed JSON is your step; take `.id` as STEP and `.item` as ITEM. The engine-run `check-references` stage produces `review-context`, `missing-references` and `changes-since`, so they arrive in the claim's `.inputs.item`, one entry per name: take each entry's `value` as CONTEXT, MISSES and CHANGES. `changes-since` is optional: an older firing lacks it, so carry on without CHANGES. If `.inputs.item` lacks `review-context` or `missing-references`, `lc set STEP --state waiting --needs "check-references output not found" --reason "review-skills could not locate the review-context artifact"` and EXIT.
 2. CONTEXT names, for the engine, the workflows and the plugin: a snapshot directory (a read-only tree at one SHA), a bare clone, the `from` and `to` SHAs, and the commands that list the changed files and diff between the SHAs. Read only inside those snapshots and clones. Never write to either, never fetch, and never run an `lc` verb that creates an item.
 3. CHANGES holds, for the engine and the workflows, the commit subjects between the previous and current SHAs (or the last 200 on a first review, or `no changes`). Read it first to learn which capabilities are new, then read in full every skill those changes could touch. With no `from` (a first review) read every skill. The skills are under the `skills:` path in CONTEXT.
 4. Read each skill against the engine's docs and ontology and the official workflows' graphs and step files in their snapshots. Report these kinds of finding, each with `file:line`:

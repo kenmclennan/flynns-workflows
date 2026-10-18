@@ -2,6 +2,7 @@
 engine: true
 accepts:
   pr: required
+detail: [outcome, pr]
 ---
 
 # Poll-CI

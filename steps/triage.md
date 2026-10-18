@@ -1,5 +1,6 @@
 ---
-presents: description
+presents: in:description
+detail: [in:description, report, outcome]
 ---
 
 # Triage (you + driver)

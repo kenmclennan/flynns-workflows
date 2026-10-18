@@ -5,6 +5,7 @@ accepts:
   branch: required
   blueprint: required
   render: optional
+detail: [report, outcome, pr]
 ---
 
 # Review-code

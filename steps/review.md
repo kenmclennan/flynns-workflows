@@ -3,6 +3,7 @@ model: sonnet
 accepts:
   plan: optional
   branch: required
+detail: [report, outcome, pr]
 ---
 
 # Review

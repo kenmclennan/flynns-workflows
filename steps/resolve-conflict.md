@@ -1,5 +1,6 @@
 ---
 model: sonnet
+detail: [report, outcome, branch, pr]
 ---
 
 # Resolve-conflict (conflict resolver)

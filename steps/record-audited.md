@@ -1,5 +1,6 @@
 ---
 script: scripts/kb-record-audited.py
+detail: [outcome, report]
 ---
 
 # Record-audited

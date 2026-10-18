@@ -1,5 +1,6 @@
 ---
-presents: artifact:findings
+presents: in:findings
+detail: [in:findings, report, outcome]
 ---
 
 # Review-findings (you + driver)
