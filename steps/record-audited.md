@@ -1,6 +1,6 @@
 ---
 script: scripts/kb-record-audited.py
-detail: [outcome, report]
+detail: [outcome, report, needs, reason]
 ---
 
 # Record-audited

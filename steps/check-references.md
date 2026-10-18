@@ -4,7 +4,7 @@ produces:
   missing-references: optional
   review-context: optional
   changes-since: optional
-detail: [outcome, report, out:missing-references]
+detail: [outcome, report, out:missing-references, needs, reason]
 ---
 
 # Check-references

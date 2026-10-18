@@ -1,6 +1,6 @@
 ---
 script: scripts/record-raised.py
-detail: [outcome, report]
+detail: [outcome, report, needs, reason]
 ---
 
 # Record-raised
