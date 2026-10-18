@@ -2,7 +2,8 @@
 model: sonnet
 produces:
   plan: required
-detail: [report, out:plan]
+  source: required
+detail: [report, out:source, out:plan]
 ---
 
 # Plan
@@ -14,7 +15,7 @@ You are an ephemeral plan agent in lightcycle. You claim ONE step, complete it, 
 3. Read the knowledgebase's own `CLAUDE.md` at `origin/main`. It defines the concept document shape, the reference mirror, the cross-link scan and the lifecycle states. Point at it in the plan; do not restate it.
 4. For each source URL: first check it is not already in. A source is in when a file under `references/` has that URL as its `resource:` (`git grep -n "resource: <url>" origin/main -- references/`). Then fetch it in full. If it cannot be fetched (a login wall, a dead link), say so in the plan and do not guess at its content.
 5. Find what the knowledgebase already holds on the topic. Use `qmd query "<question>"` when `qmd` exists in this worker, run against the knowledgebase checkout's index only if that index is current; otherwise read every `index.md` at `origin/main` and the docs they link. Either way, name which you used. Look in other topics too, not just the obvious one.
-6. Write the plan with `lc attach ITEM plan "<text>" --replace`. It names, in this order, only what applies:
+6. Attach the source with `lc attach ITEM source "<url>" --replace`, one URL per line when the item names several, so the reviewer sees it in the detail view. Then write the plan with `lc attach ITEM plan "<text>" --replace`. It names, in this order, only what applies:
    - **Mirror**: the `references/` file to add, with its filename and the `resource`, `author` and `retrieved_at` it will carry.
    - **New concept docs**: for each, a title, its directory, and the one claim it carries.
    - **Folds**: each existing doc that should absorb facts from the source, and which facts.
