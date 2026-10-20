@@ -37,11 +37,33 @@ class MeasureTests(unittest.TestCase):
                 "unresolved-link: topic-b/one.md",
                 "unreachable-doc: topic-a/orphan.md",
                 "island-topic: island",
-                "thin-doc: topic-b/two.md",
+                "thin-doc: topic-b",
                 "uncited-reference: references/uncited.md",
-                "citation-without-link: topic-b/one.md",
+                "citation-without-link: topic-b",
                 "stale: topic-a/two.md",
             ]),
+        )
+
+    def test_grouped_lines_name_example_paths(self):
+        lines = self.defect_lines(self.measure("defects"))
+        thin = [l for l in lines if l.startswith("thin-doc:")]
+        cited = [l for l in lines if l.startswith("citation-without-link:")]
+        self.assertEqual(len(thin), 1)
+        self.assertIn("topic-b/two.md", thin[0])
+        self.assertEqual(len(cited), 1)
+        self.assertIn("topic-b/one.md", cited[0])
+
+    def test_per_file_flag_restores_one_line_per_file(self):
+        lines = self.defect_lines(self.measure("defects", KB_AUDIT_PER_FILE="1"))
+        self.assertIn("thin-doc: topic-b/two.md - 0 cross-topic link(s), fewer than 1", lines)
+        self.assertTrue([l for l in lines if l.startswith("citation-without-link: topic-b/one.md")])
+
+    def test_angle_bracket_and_nested_links_and_claude_md_are_not_false_positives(self):
+        lines = self.defect_lines(self.measure("links"))
+        self.assertEqual(
+            sorted(lines),
+            ["unreachable-doc: stray.md - no index.md reaches it by following links",
+             "unresolved-link: topic-b/one.md - ../topic-a/missing (v2).md"],
         )
 
     def test_clean_fixture_has_no_defects(self):
@@ -60,7 +82,8 @@ class MeasureTests(unittest.TestCase):
     def test_higher_floor_reports_more_thin_docs(self):
         out = self.measure("defects", LC_WORKFLOW_CONFIG_MIN_CROSS_TOPIC_LINKS="2")
         thin = [l for l in self.defect_lines(out) if l.startswith("thin-doc:")]
-        self.assertGreater(len(thin), 1)
+        docs = sum(int(l.split(" - ")[1].split(" ")[0]) for l in thin)
+        self.assertGreater(docs, 1)
 
     def test_missing_schedule_state_parks(self):
         remote = make_remote("clean")
@@ -70,6 +93,34 @@ class MeasureTests(unittest.TestCase):
         proc = run("kb-measure.py", data, remote)
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("schedule_state", proc.stderr)
+
+
+class LinkParserTests(unittest.TestCase):
+    def test_angle_bracket_target_keeps_parentheses_and_drops_brackets(self):
+        body = "[x](<https://en.wikipedia.org/wiki/Foo_(bar)>) and [y](<a (v2).md> \"title\")"
+        self.assertEqual(kb_audit.body_links(body), ["https://en.wikipedia.org/wiki/Foo_(bar)", "a (v2).md"])
+
+    def test_nested_bracket_text_is_one_link(self):
+        self.assertEqual(kb_audit.body_links("[see [the spec]](x.md)"), ["x.md"])
+
+    def test_bare_target_still_ends_at_first_paren_and_images_are_skipped(self):
+        self.assertEqual(kb_audit.body_links("[a](b.md) ![i](c.png)"), ["b.md"])
+
+
+class GroupingTests(unittest.TestCase):
+    def test_groups_per_topic_with_five_examples(self):
+        defects = [("thin-doc", "t1/d%d.md" % i, "x") for i in range(7)] + [("thin-doc", "t2/d.md", "x"), ("stale", "t1/s.md", "x")]
+        grouped = kb_audit.group_by_topic(defects, 1)
+        self.assertEqual(grouped[0], ("stale", "t1/s.md", "x"))
+        self.assertEqual(grouped[1][:2], ("thin-doc", "t1"))
+        self.assertTrue(grouped[1][2].startswith("7 doc(s)"))
+        self.assertEqual(grouped[1][2].split("e.g. ")[1].split(", "), ["t1/d%d.md" % i for i in range(5)])
+        self.assertEqual(grouped[2][:2], ("thin-doc", "t2"))
+        self.assertTrue(grouped[2][2].startswith("1 doc(s)"))
+
+    def test_root_files_group_under_root(self):
+        grouped = kb_audit.group_by_topic([("citation-without-link", "a.md", "x")], 1)
+        self.assertEqual(grouped[0][:2], ("citation-without-link", "(root)"))
 
 
 class ToolCountTests(unittest.TestCase):
