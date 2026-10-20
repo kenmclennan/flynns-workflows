@@ -36,6 +36,7 @@ def main():
         kb_audit.ensure_clone(url)
         root = kb_audit.export_snapshot(sha)
         defects = kb_audit.measure(root, min_links, today())
+        shown = defects if os.environ.get("KB_AUDIT_PER_FILE") else kb_audit.group_by_topic(defects, min_links)
         tools = not os.environ.get("KB_AUDIT_SKIP_TOOLS")
         prettier, lint = kb_audit.tool_counts(root) if tools else ({}, {})
         previous = kb_audit_state.read_sha()
@@ -52,7 +53,7 @@ def main():
         {
             "outcome": "measured",
             "artifacts": {
-                "measurements": kb_audit.render(defects, prettier, lint, tools),
+                "measurements": kb_audit.render(shown, prettier, lint, tools),
                 "review-context": "\n".join(context),
             },
             "note": "%d defect(s)" % len(defects),

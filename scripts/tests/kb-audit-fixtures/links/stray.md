@@ -1,0 +1,3 @@
+# Stray
+
+Nobody links here.

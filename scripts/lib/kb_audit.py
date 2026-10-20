@@ -12,7 +12,11 @@ import tarfile
 import kb_audit_state
 
 RESERVED = ("index.md", "log.md")
-LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+LINK = re.compile(r"(?<!!)\[(?:[^\[\]]|\[[^\]]*\])*\]\((?:<([^>\n]+)>|([^)\s<]+))(?:\s+\"[^\"]*\")?\)")
+HEADING = re.compile(r"^#+\s+(.*)$")
+BACKTICKED_MD = re.compile(r"`([^`\s]+\.md)`")
+GROUPED = ("thin-doc", "citation-without-link")
+EXAMPLES = 5
 FENCE = re.compile(r"^\s*(```+|~~~+)")
 MD_ERROR = re.compile(r"^(?:\./)?(\S[^:]*\.md):\d+")
 CHUNK = 200
@@ -126,7 +130,7 @@ def body_links(body):
             fenced = not fenced
             continue
         if not fenced:
-            links.extend(LINK.findall(re.sub(r"`[^`]*`", "", line)))
+            links.extend(m.group(1) or m.group(2) for m in LINK.finditer(re.sub(r"`[^`]*`", "", line)))
     return links
 
 
@@ -151,8 +155,23 @@ def is_reference(path):
     return path.startswith("references/")
 
 
-def is_concept(path):
-    return not is_reference(path) and posixpath.basename(path) not in RESERVED
+def is_concept(path, excluded=()):
+    return not is_reference(path) and posixpath.basename(path) not in RESERVED and posixpath.basename(path) != "CLAUDE.md" and path not in excluded
+
+
+def schema_files(root, docs):
+    path = os.path.join(root, "CLAUDE.md")
+    if not os.path.isfile(path):
+        return set()
+    named, active = set(), False
+    with open(path, encoding="utf-8") as handle:
+        for line in handle.read().split("\n"):
+            heading = HEADING.match(line)
+            if heading:
+                active = bool(re.search(r"schema|tooling", heading.group(1), re.I))
+            elif active:
+                named.update(posixpath.normpath(m) for m in BACKTICKED_MD.findall(line) if posixpath.normpath(m) in docs)
+    return named
 
 
 def topic_of(path):
@@ -203,6 +222,7 @@ def cited_by_sources(path, doc, root):
 
 def measure(root, min_links, today):
     docs = load(root)
+    excluded = schema_files(root, docs)
     out = []
 
     for path, doc in docs.items():
@@ -212,7 +232,7 @@ def measure(root, min_links, today):
 
     seen = reachable(docs)
     for path in docs:
-        if is_concept(path) and path not in seen:
+        if is_concept(path, excluded) and path not in seen:
             out.append(("unreachable-doc", path, "no index.md reaches it by following links"))
 
     topics = sorted({topic_of(p) for p in docs if topic_of(p)})
@@ -233,7 +253,7 @@ def measure(root, min_links, today):
 
     for path in docs:
         topic = topic_of(path)
-        if is_concept(path) and topic and topic not in islands and cross.get(path, 0) < min_links:
+        if is_concept(path, excluded) and topic and topic not in islands and cross.get(path, 0) < min_links:
             out.append(("thin-doc", path, "%d cross-topic link(s), fewer than %d" % (cross.get(path, 0), min_links)))
 
     cited = set()
@@ -247,7 +267,7 @@ def measure(root, min_links, today):
             out.append(("uncited-reference", path, "no concept doc cites it"))
 
     for path, doc in docs.items():
-        if not is_concept(path):
+        if not is_concept(path, excluded):
             continue
         linked = {t for _, t in doc["links"]}
         for target in cited_by_sources(path, doc, root):
@@ -271,6 +291,23 @@ def measure(root, min_links, today):
 def topic_label(path):
     path = path[2:] if path.startswith("./") else path
     return path.split("/", 1)[0] if "/" in path else "(root)"
+
+
+def group_by_topic(defects, min_links, cap=EXAMPLES):
+    groups, rest = {}, []
+    for defect in defects:
+        if defect[0] in GROUPED:
+            groups.setdefault((defect[0], topic_label(defect[1])), []).append(defect[1])
+        else:
+            rest.append(defect)
+    for (kind, topic), paths in sorted(groups.items()):
+        paths = sorted(paths)
+        if kind == "thin-doc":
+            detail = "%d doc(s) with fewer than %d cross-topic link(s)" % (len(paths), min_links)
+        else:
+            detail = "%d doc(s) cite a references/ file without linking it" % len(paths)
+        rest.append((kind, topic, "%s; e.g. %s" % (detail, ", ".join(paths[:cap]))))
+    return rest
 
 
 def prettier_counts(output):
