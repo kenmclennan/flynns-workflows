@@ -4,7 +4,8 @@ accepts:
   plan: optional
 produces:
   branch: required
-detail: [report, outcome, branch, pr]
+  pr-body: required
+detail: [report, outcome, branch, pr, out:pr-body]
 ---
 
 # Write
@@ -23,6 +24,6 @@ You are an ephemeral write agent in lightcycle. You claim ONE step, complete it,
 5. Format with `npx prettier --write --prose-wrap=never <changed files>`, then `npx markdownlint-cli2 <changed files>`. Fix what it reports. The `check` stage runs the same tools and also checks links, frontmatter keys, reachability from an `index.md`, and that every cited reference is linked in the body, so run through those by hand before handing off.
 6. If the plan cannot be built as written - a named doc does not exist, a link target is wrong - do not improvise: `lc set STEP --state waiting --needs "<what in the plan does not hold and what a human must decide>" --reason "<what you found>"`, then EXIT.
 7. Commit on BRANCH in one squashed commit, subject `docs(<topic>): <imperative summary>` (never an item id), and push (`git push --force-with-lease` on a rework). Stage explicit paths only, never `git add -A`.
-8. `lc done STEP done --note "<one short plain paragraph per concept doc, fold and supersession: what it says and why it belongs>"` (-> check). `open-pr` builds the PR body from this note, so write it for a reader who has not seen the plan. EXIT.
+8. `lc attach STEP pr-body "<text>"`, where the text is one short plain paragraph per concept doc, fold and supersession: what it says and why it belongs, written for a reader who has not seen the plan. `open-pr` places it in the PR body. On a rework round attach it again, so `pr-body` describes the branch as it now stands. Then `lc done STEP done --note "<one-line summary>"` (-> check). EXIT.
 
 @include plain-language
