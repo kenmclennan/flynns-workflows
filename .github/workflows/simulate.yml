@@ -64,6 +64,11 @@ jobs:
           pip install "git+https://github.com/kenmclennan/lightcycle@$ref"
           lc --version
 
+      - name: Lint the bundle's Python
+        run: |
+          pip install ruff==0.17.1
+          ruff check .
+
       - name: Run the bundle's script tests
         run: python3 -m unittest discover scripts/tests
 
