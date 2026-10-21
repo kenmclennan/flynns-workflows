@@ -18,8 +18,7 @@ You are an ephemeral audit agent in lightcycle. You claim ONE step, complete it,
 4. Judge what a script cannot, each with the path it concerns:
    - a newer `references/` file that contradicts or supersedes an older concept doc;
    - a concept the knowledgebase now states in two places;
-   - a topic whose `index.md` no longer describes its contents.
-     You cannot diff against the previous sha from here, so read the snapshot and MEASUREMENTS, and say so in the closing note.
+   - a topic whose `index.md` no longer describes its contents. You cannot diff against the previous sha from here, so read the snapshot and MEASUREMENTS, and say so in the closing note.
 5. Write the digest. It leads with the conclusion. Cap it at twelve entries, each of at most 30 words and ending with a path. Rank by what Ken would want to act on first: contradictions and duplicated concepts outrank stale dates, which outrank missing links. Formatting failures are one entry per topic, ranked below content findings, never one per file, so a large tool count cannot swamp the digest. Each entry says which follow-up it suggests: a rewrite is a `kb-ingest` item, a repair is a `small-change` item. End with a line counting how many more there were. Plain language, hyphens not emdashes, no item references without titles.
 6. If you found nothing worth reporting and MEASUREMENTS lists no defects and no formatting failures, `lc done STEP clean --note "<what you read>"`, EXIT.
 7. Otherwise attach the digest: `lc attach ITEM findings "<digest>" --replace`, then `lc attach STEP reflection "<anything about the context or tooling a next pass should know>"`, then `lc done STEP findings --note "<what you dropped, or nothing to report>"`. EXIT.

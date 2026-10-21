@@ -87,3 +87,18 @@ jobs:
             echo "::error::simulate failed against the engine's main ($ENGINE_REF) while the pinned gate is $ENGINE_PIN - this is engine drift, not a bundle defect, until proven otherwise"
           fi
           exit "$fail"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Check formatting with prettier
+        run: npx --yes prettier --check --prose-wrap=never 'steps/*.md' 'docs/*.md'
+
+      - name: Lint markdown with markdownlint-cli2
+        run: npx --yes markdownlint-cli2 'steps/*.md' 'workflows/*.md' 'docs/*.md'
