@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "BLE001", "RUF013", "DTZ", "SIM115"]
+ignore = ["E501", "E741", "E702", "E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/feeds-moved.py" = ["BLE001"]
+"scripts/kb-measure.py" = ["DTZ011"]
+"scripts/lib/scout_fetch.py" = ["BLE001"]
+"scripts/record-decisions.py" = ["BLE001"]
+"scripts/record-raised.py" = ["BLE001"]
+"scripts/tests/kb_audit_helpers.py" = ["F401"]
+"scripts/tests/test_scout.py" = ["E731"]
