@@ -1,0 +1,12 @@
+{
+  "pass": {
+    "outcome": "pass",
+    "title": "Propose closing 1 delivered GitHub issue(s); 1 need a look",
+    "description": "To close issues, attach the approved set and finish the gate step: lc attach STEP approved '{\"issues\": [\"owner/repo#N\"]}' --replace, then lc done STEP approved. To close nothing, attach {\"issues\": []} and lc done STEP declined.\n\nProposed closes\nkenmclennan/lightcycle\n- [kenmclennan/lightcycle#12](https://github.com/kenmclennan/lightcycle/issues/12) Inbox hides parked steps - LC-1301 (done, completed) PR #1013\n\nNeeds a look\nkenmclennan/lightcycle\n- [kenmclennan/lightcycle#14](https://github.com/kenmclennan/lightcycle/issues/14) Doctor misses config - LC-1302 abandoned",
+    "state": "{\"shown\": [{\"fingerprint\": \"aa11\", \"number\": 12, \"repo\": \"kenmclennan/lightcycle\"}, {\"fingerprint\": \"bb22\", \"number\": 14, \"repo\": \"kenmclennan/lightcycle\"}]}"
+  },
+  "fail": {
+    "outcome": "fail",
+    "note": "nothing new to propose"
+  }
+}

@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+import datetime
+import json
+import os
+import sqlite3
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+
+import delivered_state as ds
+
+
+def load_state(stdin):
+    raw = stdin.get("schedule_state")
+    if not raw:
+        sys.stderr.write("schedule_state is missing or empty; nothing to record\n")
+        sys.exit(1)
+    try:
+        state = json.loads(raw)
+        return [(s["repo"], int(s["number"]), str(s["fingerprint"])) for s in state["shown"]]
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        sys.stderr.write("schedule_state is not a valid shown object: %r\n" % (exc,))
+        sys.exit(1)
+
+
+def main():
+    try:
+        stdin = json.load(sys.stdin)
+    except ValueError as exc:
+        sys.stderr.write("stdin is not JSON: %s\n" % exc)
+        sys.exit(1)
+    shown = load_state(stdin)
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    conn = ds.connect()
+    try:
+        ds.migrate(conn)
+        with conn:
+            conn.executemany(
+                "INSERT INTO shown (repo, number, fingerprint, shown_at) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(repo, number) DO UPDATE SET "
+                "fingerprint = excluded.fingerprint, shown_at = excluded.shown_at",
+                [(r, n, f, now) for r, n, f in shown],
+            )
+    except sqlite3.Error as exc:
+        sys.stderr.write("could not record shown issues: %s\n" % exc)
+        sys.exit(1)
+    finally:
+        conn.close()
+    ds.emit({"outcome": "recorded"})
+
+
+if __name__ == "__main__":
+    main()
