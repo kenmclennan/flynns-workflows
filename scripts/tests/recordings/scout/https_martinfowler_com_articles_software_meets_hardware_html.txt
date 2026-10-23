@@ -1,0 +1,10 @@
+<html><body>
+<header><a href="https://www.linkedin.com/company/thoughtworks">Thoughtworks</a></header>
+<nav><a href="https://twitter.com/martinfowler">Twitter</a></nav>
+<div class="page">
+<section class="frontMatter"><a href="https://www.linkedin.com/in/author">Author</a> <a href="https://author.example/">Home</a></section>
+<div class="paperBody shallow"><p>Intro.</p><div class="box"><a href="https://martinfowler.com/bliki/SensibleDefault.html">same host</a></div></div>
+<div class="appendix"><p>Thanks to someone.</p></div>
+</div>
+<footer><a href="https://www.facebook.com/x">Facebook</a></footer>
+</body></html>

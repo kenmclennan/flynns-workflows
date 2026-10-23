@@ -1,0 +1,16 @@
+<html><body>
+<article class="post">
+<a href="https://newsletter.kentbeck.com/s/series">Series</a>
+<div class="header"><a href="https://substack.com/@kentbeck">Kent Beck</a></div>
+<div class="available-content"><div class="body markup">
+<p><a href="http://grammar.ccc.commnet.edu/grammar/runons.htm">run-ons</a>
+<a href="https://testdesiderata.com">desiderata</a></p>
+<div class="captioned-image"><a href="https://substackcdn.com/image/fetch/w_1456/https%3A%2F%2Fexample.com%2Fa.png"><img src="x"></a></div>
+<p><a href="https://www.kentbeck.com/kent-beck-sponsorship#inquire">Sponsor</a></p>
+</div></div>
+<div class="comment-list"><div class="comment"><a href="https://substack.com/profiles/1">commenter</a></div>
+<div class="comment"><a href="https://substack.com/profiles/2">another</a></div></div>
+</article>
+<footer><a href="https://substack.com/privacy">Privacy</a> <a href="https://substack.com/tos">Terms</a>
+<a href="https://apps.apple.com/app/substack">App</a> <a href="https://substack.com/signup">Sign up</a></footer>
+</body></html>

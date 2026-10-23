@@ -182,6 +182,63 @@ class FetchTests(unittest.TestCase):
             links = scout_fetch.extract_links(handle.read(), GUARDRAILS)
         self.assertEqual(links, [THIRD])
 
+    def extract_recording(self, name, base):
+        with open(os.path.join(HERE, "recordings", "scout", name)) as handle:
+            return scout_fetch.extract_links(handle.read(), base)
+
+    def test_extract_links_article_page_keeps_only_body_links(self):
+        links = self.extract_recording(
+            "https_martinfowler_com_articles_software_meets_hardware_html.txt",
+            "https://martinfowler.com/articles/software-meets-hardware.html",
+        )
+        self.assertEqual(links, [])
+
+    def test_extract_links_fragments_page_keeps_body_links_without_amazon(self):
+        links = self.extract_recording(
+            "https_martinfowler_com_fragments_2026_10_21_html.txt",
+            "https://martinfowler.com/fragments/2026-10-21.html",
+        )
+        self.assertEqual(
+            links,
+            [
+                "https://x.com/GergelyOrosz/status/2108863325756961274",
+                "https://bjsm.bmj.com/content/60/9/677",
+                "https://anitab.org/press-release",
+                "https://copyconstruct.medium.com/how-to-effectively-debug-when-you-no-longer-understand-the-code-bd3dcb2c5f7b",
+            ],
+        )
+
+    def test_extract_links_substack_post_drops_chrome_comments_images_and_sponsorship(self):
+        links = self.extract_recording(
+            "https_newsletter_kentbeck_com_p_decompose_run_on_tests.txt",
+            "https://newsletter.kentbeck.com/p/decompose-run-on-tests",
+        )
+        self.assertEqual(links, ["http://grammar.ccc.commnet.edu/grammar/runons.htm", "https://testdesiderata.com"])
+
+    def test_extract_links_excludes_assets_and_amazon_inside_a_body(self):
+        page = (
+            '<div class="paperBody deep">'
+            '<a href="https://substackcdn.com/image/fetch/x">i</a>'
+            '<a href="https://other.example/pic.PNG">p</a>'
+            '<a href="https://www.amazon.com/gp/product/1">a</a>'
+            '<a href="https://amzn.to/abc">b</a>'
+            '<a href="https://other.example/doc.pdf">pdf</a>'
+            '<a href="https://page.example/x">page</a></div>'
+        )
+        self.assertEqual(scout_fetch.extract_links(page, GUARDRAILS), ["https://other.example/doc.pdf", "https://page.example/x"])
+
+    def test_extract_links_body_without_links_does_not_fall_back(self):
+        page = '<a href="https://out.example/a">a</a><div class="paperBody shallow"><p>none</p></div>'
+        self.assertEqual(scout_fetch.extract_links(page, GUARDRAILS), [])
+
+    def test_extract_links_appendix_alone_counts_as_a_body(self):
+        page = '<a href="https://out.example/a">a</a><div class="appendix"><a href="https://in.example/b">b</a></div>'
+        self.assertEqual(scout_fetch.extract_links(page, GUARDRAILS), ["https://in.example/b"])
+
+    def test_extract_links_still_skips_nav_inside_a_body(self):
+        page = '<div class="body markup"><nav><a href="https://nav.example/a">n</a></nav><a href="https://in.example/b">b</a></div>'
+        self.assertEqual(scout_fetch.extract_links(page, GUARDRAILS), ["https://in.example/b"])
+
     def test_first_run_is_capped_and_later_runs_use_the_mark(self):
         entries = [{"url": "https://x.test/%d" % i, "published": "2026-01-%02dT00:00:00Z" % i} for i in range(1, 10)]
         self.assertEqual(len(scout_fetch.new_entries(entries, "", set())), scout_fetch.FIRST_RUN_ENTRIES)
