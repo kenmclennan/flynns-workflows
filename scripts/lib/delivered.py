@@ -92,6 +92,10 @@ def item_status(item):
     return True, "done, completed"
 
 
+def in_flight(items):
+    return any(i.get("state") != "done" for i in items)
+
+
 def classify(items):
     return "proposed" if items and all(item_status(i)[0] for i in items) else "look"
 

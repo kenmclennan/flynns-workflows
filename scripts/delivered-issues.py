@@ -51,7 +51,7 @@ def main():
     for repo in repos:
         for issue in list_issues(gh, repo):
             items = delivered.referencing_items(lc, repo, issue["number"])
-            if not items:
+            if not items or delivered.in_flight(items):
                 continue
             fp = delivered.fingerprint(items)
             if shown.get((repo, issue["number"])) == fp:

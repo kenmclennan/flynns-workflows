@@ -104,21 +104,30 @@ class DeliveredTests(unittest.TestCase):
         self.assertIn("lightcycle#12", look)
         self.assertIn("LC-1302 abandoned", look)
 
-    def test_done_without_merged_pr_and_open_items_need_a_look(self):
-        self.set_issues([12, 13])
+    def test_done_without_merged_pr_needs_a_look(self):
+        self.set_issues([12])
         self.add_item(item_id="LC-1303", number=12)
-        self.add_item(item_id="LC-1304", number=13, state="running", disposition=None)
         look = self.guard()["description"].split("Needs a look")[1]
         self.assertIn("LC-1303 done, no merged PR", look)
-        self.assertIn("LC-1304 still open", look)
 
-    def test_one_unfinished_item_keeps_issue_out_of_proposed(self):
+    def test_issue_whose_only_item_is_open_files_nothing(self):
+        self.set_issues([13])
+        self.add_item(item_id="LC-1304", number=13, state="running", disposition=None)
+        self.assertEqual(self.guard(), {"outcome": "fail", "note": "nothing new to propose"})
+
+    def test_done_merged_item_plus_open_item_files_nothing(self):
         self.set_issues([12])
         self.add_item(item_id="LC-1301", number=12, prs=["https://github.com/%s/pull/1" % LC])
         self.add_item(item_id="LC-1305", number=12, state="running", disposition=None)
-        proposed, look = self.guard()["description"].split("Needs a look")
-        self.assertNotIn("lightcycle#12", proposed)
-        self.assertIn("lightcycle#12", look)
+        self.assertEqual(self.guard(), {"outcome": "fail", "note": "nothing new to propose"})
+
+    def test_in_flight_issue_is_absent_from_state(self):
+        self.set_issues([12, 13])
+        self.add_item(item_id="LC-1301", number=12, prs=["https://github.com/%s/pull/1" % LC])
+        self.add_item(item_id="LC-1304", number=13, state="running", disposition=None)
+        out = self.guard()
+        self.assertEqual([s["number"] for s in json.loads(out["state"])["shown"]], [12])
+        self.assertNotIn("lightcycle#13", out["description"])
 
     def test_issue_with_no_item_is_absent_and_nothing_files(self):
         self.set_issues([12])
@@ -144,10 +153,10 @@ class DeliveredTests(unittest.TestCase):
         self.add_item(item_id="LC-1301", number=12, prs=["https://github.com/%s/pull/1013" % LC])
         self.record(self.guard())
         self.assertEqual(self.guard()["outcome"], "fail")
-        self.add_item(item_id="LC-1307", number=12, state="running", disposition=None)
+        self.add_item(item_id="LC-1307", number=12, disposition="abandoned")
         again = self.guard()
         self.assertEqual(again["outcome"], "pass")
-        self.assertIn("LC-1307 still open", again["description"])
+        self.assertIn("LC-1307 abandoned", again["description"])
 
     def test_close_closes_only_approved_with_comment_form(self):
         self.set_issues([12, 13])
