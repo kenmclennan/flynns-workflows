@@ -8,7 +8,7 @@ import sys
 
 BASE = os.environ.get("KB_CHECK_BASE", "origin/main")
 RESERVED = ("index.md", "log.md")
-LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+LINK = re.compile(r"(?<!!)\[(?:[^\[\]]|\[[^\]]*\])*\]\((?:<([^>\n]+)>|([^)\s<]+))(?:\s+\"[^\"]*\")?\)")
 FENCE = re.compile(r"^\s*(```+|~~~+)")
 
 
@@ -54,7 +54,7 @@ def body_links(body):
             fenced = not fenced
             continue
         if not fenced:
-            links.extend(LINK.findall(re.sub(r"`[^`]*`", "", line)))
+            links.extend(m.group(1) or m.group(2) for m in LINK.finditer(re.sub(r"`[^`]*`", "", line)))
     return links
 
 
