@@ -112,35 +112,71 @@ def new_entries(entries, mark, known):
     ]
 
 
+BODY_CLASSES = ({"paperBody"}, {"appendix"}, {"body", "markup"})
+ASSET_HOSTS = ("substackcdn.com",)
+ASSET_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".heic", ".ico", ".css", ".js", ".woff", ".woff2")
+AMAZON_HOST = re.compile(r"^(www\.)?amazon\.[a-z.]+$")
+
+
+def _is_body(attrs):
+    tokens = set((dict(attrs).get("class") or "").split())
+    return any(needed <= tokens for needed in BODY_CLASSES)
+
+
 class _Links(HTMLParser):
     def __init__(self):
         super().__init__()
         self.links = []
+        self.body_links = []
+        self.has_body = False
         self.skip = 0
+        self.body = 0
 
     def handle_starttag(self, tag, attrs):
-        if tag in ("nav", "footer", "header"):
+        if tag == "div":
+            if self.body:
+                self.body += 1
+            elif _is_body(attrs):
+                self.body = 1
+                self.has_body = True
+        elif tag in ("nav", "footer", "header"):
             self.skip += 1
         elif tag == "a" and not self.skip:
             href = dict(attrs).get("href")
             if href:
                 self.links.append(href)
+                if self.body:
+                    self.body_links.append(href)
 
     def handle_endtag(self, tag):
-        if tag in ("nav", "footer", "header") and self.skip:
+        if tag == "div" and self.body:
+            self.body -= 1
+        elif tag in ("nav", "footer", "header") and self.skip:
             self.skip -= 1
+
+
+def _excluded(absolute):
+    parts = urllib.parse.urlsplit(absolute)
+    name = parts.netloc.lower()
+    if name in ASSET_HOSTS or name.endswith(".substackcdn.com"):
+        return True
+    if parts.path.lower().endswith(ASSET_EXTENSIONS):
+        return True
+    if AMAZON_HOST.match(name) or name == "amzn.to":
+        return True
+    return name in ("kentbeck.com", "www.kentbeck.com") and parts.path.startswith("/kent-beck-sponsorship")
 
 
 def extract_links(body, base):
     parser = _Links()
     parser.feed(body or "")
     seen = []
-    for href in parser.links:
+    for href in parser.body_links if parser.has_body else parser.links:
         absolute = urllib.parse.urljoin(base, href)
         if urllib.parse.urlsplit(absolute).scheme not in ("http", "https"):
             continue
         absolute = normalize(absolute)
-        if host(absolute) == host(base) or absolute in seen:
+        if host(absolute) == host(base) or _excluded(absolute) or absolute in seen:
             continue
         seen.append(absolute)
     return seen

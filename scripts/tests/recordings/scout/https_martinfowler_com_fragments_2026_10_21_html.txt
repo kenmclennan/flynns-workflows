@@ -1,0 +1,11 @@
+<html><body>
+<div class="navmenu"><a href="https://www.linkedin.com/company/thoughtworks">Thoughtworks</a></div>
+<div class="paperBody deep">
+<p>See <a href="https://x.com/GergelyOrosz/status/2108863325756961274">a post</a> and
+<a href="https://bjsm.bmj.com/content/60/9/677">a study</a>.</p>
+<p><a href="https://anitab.org/press-release">press</a>
+<a href="https://copyconstruct.medium.com/how-to-effectively-debug-when-you-no-longer-understand-the-code-bd3dcb2c5f7b">debugging</a>
+<a href="https://www.amazon.com/gp/product/0000000000?tag=martinfowlerc-20">book</a></p>
+</div>
+<div class="navmenu"><a href="https://twitter.com/martinfowler">Twitter</a></div>
+</body></html>

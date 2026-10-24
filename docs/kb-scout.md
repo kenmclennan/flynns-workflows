@@ -3,7 +3,7 @@
 Watches trusted feeds for material worth adding to the knowledgebase (`kenmclennan/knowledgebase`), follows links one hop out, scores what it finds, and raises one inbox item listing the candidates above a threshold. It mirrors nothing and writes nothing to the knowledgebase.
 
 - **Guard** (`scripts/feeds-moved.py`, suggested `0 9 * * 2,5`) fetches every enabled feed and passes when any has entries newer than its high-water mark, or candidates or undecided survivors are waiting. Otherwise nothing is filed and nothing is spent.
-- **harvest** is a script stage. New entries become tier 1 candidates; their outbound links become tier 2 candidates with an inbound-link count. Sources already in `references/` and sources already accepted or rejected are dropped.
+- **harvest** is a script stage. New entries become tier 1 candidates; their outbound links become tier 2 candidates with an inbound-link count. Only links in the article body are followed (martinfowler.com `div.paperBody` and `div.appendix`, Substack `div.body.markup`), minus static assets, Amazon and the author sponsorship page; a page with no recognisable body falls back to every link outside `nav`, `header` and `footer`. Sources already in `references/` and sources already accepted or rejected are dropped.
 - **evaluate** is the only agent stage. It scores up to `batch-cap` candidates for relevance and novelty against the knowledgebase.
 - **rank** is a script stage. It applies `threshold`. `none` closes the item unseen.
 - **review-candidates** is the human gate. Accept, reject or defer each survivor; file a `kb-ingest` item per acceptance.
