@@ -63,6 +63,10 @@ class KbCheckTests(unittest.TestCase):
         report = self.report(self.check("unresolved-link"))
         self.assertIn("topic/new.md: relative link ../nowhere/missing.md does not resolve", report)
 
+    def test_angle_bracket_external_link_is_not_checked_as_a_relative_path(self):
+        out = self.check("angle-bracket-link")
+        self.assertEqual(out["outcome"], "clean", out)
+
     def test_doc_unreachable_from_any_index_fails(self):
         report = self.report(self.check("unreachable-doc"))
         self.assertIn("topic/new.md: not reachable from index.md", report)
