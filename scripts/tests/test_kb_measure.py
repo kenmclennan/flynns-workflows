@@ -41,6 +41,7 @@ class MeasureTests(unittest.TestCase):
                 "uncited-reference: references/uncited.md",
                 "citation-without-link: topic-b",
                 "stale: topic-a/two.md",
+                "index-count: index.md",
             ]),
         )
 
