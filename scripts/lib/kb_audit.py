@@ -20,6 +20,9 @@ EXAMPLES = 5
 FENCE = re.compile(r"^\s*(```+|~~~+)")
 MD_ERROR = re.compile(r"^(?:\./)?(\S[^:]*\.md):\d+")
 CHUNK = 200
+NUMBER_WORDS = ("two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty").split()
+NUMBER = re.compile(r"\b(\d+|%s)\b" % "|".join(NUMBER_WORDS), re.I)
+INDEX_ENTRY = re.compile(r"^\s*[-*]\s+\[[^\]]*\]\((?:<([^>\n]+)>|([^)\s<]+))\)\s*(.*)$")
 SHA = re.compile(r"^[0-9a-f]{7,64}$")
 
 
@@ -220,6 +223,35 @@ def cited_by_sources(path, doc, root):
     return cited
 
 
+def number_value(token):
+    token = token.lower()
+    return int(token) if token.isdigit() else NUMBER_WORDS.index(token) + 2
+
+
+def index_count_defects(root, docs, excluded):
+    path = os.path.join(root, "index.md")
+    if not os.path.isfile(path):
+        return []
+    found = []
+    with open(path, encoding="utf-8") as handle:
+        lines = handle.read().split("\n")
+    for line in lines:
+        entry = INDEX_ENTRY.match(line)
+        if not entry:
+            continue
+        target = resolve("index.md", entry.group(1) or entry.group(2))
+        if not target or posixpath.basename(target) != "index.md" or posixpath.dirname(target) in ("", "."):
+            continue
+        topic = topic_of(target)
+        if not topic:
+            continue
+        count = sum(1 for p in docs if topic_of(p) == topic and is_concept(p, excluded))
+        for token in NUMBER.findall(entry.group(3)):
+            if number_value(token) != count:
+                found.append(("index-count", "index.md", "%s: blurb says %s, topic has %d concept docs" % (topic, token, count)))
+    return found
+
+
 def measure(root, min_links, today):
     docs = load(root)
     excluded = schema_files(root, docs)
@@ -273,6 +305,8 @@ def measure(root, min_links, today):
         for target in cited_by_sources(path, doc, root):
             if target not in linked:
                 out.append(("citation-without-link", path, "cites %s in sources but does not link it" % target))
+
+    out.extend(index_count_defects(root, docs, excluded))
 
     for path, doc in docs.items():
         value = doc["keys"].get("stale_after")
