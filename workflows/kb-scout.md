@@ -3,6 +3,7 @@ summary: one inbox item listing candidate sources for the knowledgebase, found b
 when-to-use: an operator enables its suggested schedule; it is not filed by hand
 schedule:
   cron: 0 9 * * 2,5
+  name: kb-scout
   guard: script:scripts/feeds-moved.py
 lifecycle:
   install: scripts/scout-install.py

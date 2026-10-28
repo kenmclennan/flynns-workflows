@@ -3,6 +3,7 @@ summary: one inbox item listing where the lightcycle plugin's skills have drifte
 when-to-use: an operator enables its suggested schedule; it is not filed by hand
 schedule:
   cron: 0 8 * * *
+  name: plugin-drift
   guard: script:scripts/moved.py
 lifecycle:
   install: scripts/drift-install.py

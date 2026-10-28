@@ -3,6 +3,7 @@ summary: one inbox item listing GitHub issues on the lightcycle repos not raised
 when-to-use: an operator enables its suggested schedule; it is not filed by hand
 schedule:
   cron: 0 9,14 * * 1-5
+  name: triage
   guard: script:scripts/new-issues.py
 lifecycle:
   install: scripts/install.py

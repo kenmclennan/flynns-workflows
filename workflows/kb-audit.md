@@ -3,6 +3,7 @@ summary: one inbox item listing stale, unlinked and badly formatted docs in the 
 when-to-use: an operator enables its suggested schedule; it is not filed by hand
 schedule:
   cron: 0 9 * * 1
+  name: kb-audit
   guard: script:scripts/kb-tip-moved.py
 lifecycle:
   install: scripts/kb-audit-install.py

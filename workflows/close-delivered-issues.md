@@ -3,6 +3,7 @@ summary: one inbox item proposing closes for open GitHub issues whose fix has me
 when-to-use: an operator enables its suggested schedule; it is not filed by hand
 schedule:
   cron: 0 10 * * 1-5
+  name: issue-close
   guard: script:scripts/delivered-issues.py
 lifecycle:
   install: scripts/delivered-install.py
