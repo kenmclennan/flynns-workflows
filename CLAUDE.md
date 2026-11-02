@@ -10,6 +10,12 @@ A workflow in this repo may reference only step files inside this same repo (`st
 
 Author with the `lightcycle:author-workflow` skill. If this origin has no workflow yet, bootstrap the first one with a generic pipeline (e.g. `spec-driven`) pointed at this repo, the same way `lightcycle-workflows` bootstrapped its own `workflow-authoring` workflow. Model a new graph and its step prompts on bundles already pulled from the `lightcycle` origin (`spec-driven`, `bdd-driven`, `workflow-authoring`) - never on the engine source (`lightcycle/prompts/steps/audit.md` is the engine's own prompt for the retro it files itself, not a workflow template).
 
+## Documenting a workflow
+
+Each workflow gets a page at `docs/<name>.md` and a row in the README workflow table whose name links to that page. A page holds a summary, when to use it, its phases, a hand-drawn flowchart, then each stage. Keep the page and the row in step whenever the workflow's graph changes.
+
+The hand-drawn flowchart uses `[ agent ]` for an agent step, `{{ human }}` for a human gate and `([ terminal ])` for a terminal. It is distinct from a design spec's mermaid, which mirrors `lc workflow describe --mermaid`; the two are not mixed in one file.
+
 ## The gate is the simulator, not a test suite
 
 `lc workflow check <origin>/<name>` (static composition) and the `simulate` CI job (`.github/workflows/simulate.yml`) are what a PR touching `workflows/*.md` or `steps/*.md` must pass. That gate installs the engine at a pinned SHA (`ENGINE_PIN`), so a PR's result depends only on its own diff; a nightly run installs the engine's `main` instead, so upstream drift surfaces as a scheduled failure rather than as a false `ci-failed` rework on an unrelated PR. Bump `ENGINE_PIN` deliberately, and only to a SHA you have watched pass every bundle here. `lc workflow describe <origin>/<name> --mermaid` renders the built graph so a reviewer can confirm it matches the design.
