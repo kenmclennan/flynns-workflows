@@ -108,6 +108,37 @@ class LinkParserTests(unittest.TestCase):
         self.assertEqual(kb_audit.body_links("[a](b.md) ![i](c.png)"), ["b.md"])
 
 
+class IndexCountTests(unittest.TestCase):
+    BLURBS = {
+        "skills": "eight techniques",
+        "desktop": "Tauri 2",
+        "implicit": "the four contract levels",
+        "oracles": "Barr et al.'s four kinds",
+    }
+
+    def defects(self, concept_docs):
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root)
+        lines = ["# Index", ""]
+        docs = {}
+        for topic, blurb in self.BLURBS.items():
+            lines.append("- [%s](%s/index.md) - %s" % (topic, topic, blurb))
+            docs[topic + "/index.md"] = {}
+            for i in range(concept_docs[topic]):
+                docs["%s/doc%d.md" % (topic, i)] = {}
+        with open(os.path.join(root, "index.md"), "w", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+        return kb_audit.index_count_defects(root, docs, set())
+
+    def test_only_counting_noun_numbers_are_compared(self):
+        found = self.defects({"skills": 3, "desktop": 1, "implicit": 1, "oracles": 1})
+        self.assertEqual(len(found), 1)
+        self.assertIn("skills: blurb says eight", found[0][2])
+
+    def test_matching_count_reports_nothing(self):
+        self.assertEqual(self.defects({"skills": 8, "desktop": 1, "implicit": 1, "oracles": 1}), [])
+
+
 class GroupingTests(unittest.TestCase):
     def test_groups_per_topic_with_five_examples(self):
         defects = [("thin-doc", "t1/d%d.md" % i, "x") for i in range(7)] + [("thin-doc", "t2/d.md", "x"), ("stale", "t1/s.md", "x")]
