@@ -21,7 +21,8 @@ FENCE = re.compile(r"^\s*(```+|~~~+)")
 MD_ERROR = re.compile(r"^(?:\./)?(\S[^:]*\.md):\d+")
 CHUNK = 200
 NUMBER_WORDS = ("two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty").split()
-NUMBER = re.compile(r"\b(\d+|%s)\b" % "|".join(NUMBER_WORDS), re.I)
+COUNTING_NOUNS = "techniques? concepts? entry entries docs? documents? patterns? pages?".split()
+NUMBER = re.compile(r"\b(\d+|%s)(?=\s+(?:%s)\b)" % ("|".join(NUMBER_WORDS), "|".join(COUNTING_NOUNS)), re.I)
 INDEX_ENTRY = re.compile(r"^\s*[-*]\s+\[[^\]]*\]\((?:<([^>\n]+)>|([^)\s<]+))\)\s*(.*)$")
 SHA = re.compile(r"^[0-9a-f]{7,64}$")
 
