@@ -47,6 +47,95 @@ def source_resources(front):
     return [m.group(1).strip().strip("\"'") for m in re.finditer(r"^\s*-?\s*resource:\s*(.+)$", block.group(1), re.M)]
 
 
+def address_paths(front):
+    match = re.search(r"^addresses:[ \t]*(.*)$", front, re.M)
+    if not match:
+        return []
+    rest = match.group(1).strip()
+    if not rest and front[match.end():].lstrip().startswith("["):
+        rest = "["
+    if rest.startswith("["):
+        start = front.index("[", match.start(1))
+        end = front.find("]", start)
+        raw = front[start + 1:end if end != -1 else len(front)].split(",")
+    elif rest:
+        raw = [rest]
+    else:
+        raw = []
+        for line in front[match.end():].split("\n"):
+            item = re.match(r"^[ \t]*-[ \t]*(.+)$", line)
+            if item:
+                raw.append(item.group(1))
+            elif line.strip():
+                break
+    return [r.strip().strip("\"'").strip() for r in raw if r.strip().strip("\"'").strip()]
+
+
+def resolve_address(path, target):
+    for candidate in (resolve(path, target), posixpath.normpath(target)):
+        if candidate and os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def is_problem(path):
+    front, _ = split_frontmatter(read(path))
+    return front is not None and top_level_keys(front).get("type", "").strip("\"'") == "Problem"
+
+
+def responds_list(path):
+    _, body = split_frontmatter(read(path))
+    section = re.search(r"^##[ \t]+What responds to it[ \t]*$(.*?)(?=^##[ \t]|\Z)", body, re.M | re.S)
+    if not section:
+        return set()
+    return {t for t in (resolve(path, link) for link in body_links(section.group(1))) if t}
+
+
+def all_docs():
+    found = []
+    for root, dirs, names in os.walk("."):
+        dirs[:] = [d for d in dirs if d not in (".git", "node_modules")]
+        for item in names:
+            if item.endswith(".md"):
+                found.append(posixpath.normpath(os.path.join(root, item).replace(os.sep, "/")))
+    return sorted(found)
+
+
+def addressing_map():
+    mapping = {}
+    for path in all_docs():
+        if posixpath.basename(path) in RESERVED or path.startswith("references/"):
+            continue
+        front, _ = split_frontmatter(read(path))
+        for target in address_paths(front or ""):
+            resolved = resolve_address(path, target)
+            if resolved:
+                mapping.setdefault(resolved, set()).add(path)
+    return mapping
+
+
+def problem_failures(files, addressed):
+    problems = set()
+    for path in files:
+        if path.startswith("references/") or posixpath.basename(path) in RESERVED:
+            continue
+        if is_problem(path):
+            problems.add(path)
+        front, _ = split_frontmatter(read(path))
+        for target in address_paths(front or ""):
+            resolved = resolve_address(path, target)
+            if resolved and is_problem(resolved):
+                problems.add(resolved)
+    failures = []
+    for problem in sorted(problems):
+        listed, addressing = responds_list(problem), addressed.get(problem, set())
+        for extra in sorted(listed - addressing):
+            failures.append("%s: lists %s under \"What responds to it\" but that doc does not address it" % (problem, extra))
+        for missing in sorted(addressing - listed):
+            failures.append("%s: %s addresses it but is not listed under \"What responds to it\"" % (problem, missing))
+    return failures
+
+
 def body_links(body):
     links, fenced = [], False
     for line in body.split("\n"):
@@ -136,10 +225,14 @@ def check(files):
         if name not in RESERVED:
             if path not in reachable:
                 failures.append("%s: not reachable from index.md by following links" % path)
+            for target in address_paths(front or ""):
+                if not resolve_address(path, target):
+                    failures.append("%s: addresses %s does not resolve" % (path, target))
             for resource in source_resources(front or ""):
                 cited = [c for c in (posixpath.normpath(resource), resolve(path, resource)) if c and c.startswith("references/") and os.path.exists(c)]
                 if cited and not set(cited) & linked:
                     failures.append("%s: cites %s in `sources` but does not link it in the body" % (path, cited[0]))
+    failures += problem_failures(files, addressing_map())
     return failures
 
 

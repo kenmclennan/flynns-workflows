@@ -79,6 +79,26 @@ class KbCheckTests(unittest.TestCase):
         report = self.report(self.check("missing-frontmatter"))
         self.assertIn("topic/new.md: frontmatter is missing or has no `type`", report)
 
+    def test_broken_addresses_path_fails(self):
+        report = self.report(self.check("addresses-broken-path"))
+        self.assertIn("topic/response.md: addresses missing.md does not resolve", report)
+
+    def test_multiline_flow_list_addresses_resolve(self):
+        out = self.check("addresses-flow-multiline")
+        self.assertEqual(out["outcome"], "clean", out)
+
+    def test_block_list_addresses_resolve(self):
+        out = self.check("addresses-block-list")
+        self.assertEqual(out["outcome"], "clean", out)
+
+    def test_problem_missing_a_response_that_addresses_it_fails(self):
+        report = self.report(self.check("problem-missing-response"))
+        self.assertIn("topic/problem.md: topic/response.md addresses it but is not listed under \"What responds to it\"", report)
+
+    def test_problem_listing_a_response_that_does_not_address_it_fails(self):
+        report = self.report(self.check("problem-extra-response"))
+        self.assertIn("topic/problem.md: lists topic/existing.md under \"What responds to it\" but that doc does not address it", report)
+
     def test_committed_change_is_checked_like_an_uncommitted_one(self):
         overlay("unresolved-link", self.dir)
         git(self.dir, "add", "-A")
