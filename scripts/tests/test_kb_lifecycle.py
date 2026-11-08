@@ -89,13 +89,13 @@ class MaintainTests(unittest.TestCase):
         self.assertEqual(self.qmd_calls(), [])
 
     def test_unset_checkout_path_exits_quietly(self):
-        proc = run("kb-maintain.py")
+        proc = run("kb-maintain.py", LC_WORKFLOW_CONFIG_QMD_COMMAND=FAKE_QMD)
         self.assertEqual(proc.returncode, 0)
 
 
 class InstallTests(unittest.TestCase):
     def test_missing_hard_tool_fails(self):
-        proc = run("kb-install.py", PATH="/nonexistent", LC_WORKFLOW_CONFIG_CHECKOUT_PATH="/somewhere")
+        proc = run("kb-install.py", PATH="/nonexistent", LC_WORKFLOW_CONFIG_CHECKOUT_PATH="/somewhere", LC_WORKFLOW_CONFIG_QMD_COMMAND=FAKE_QMD)
         self.assertNotEqual(proc.returncode, 0)
         for name in ("gh", "npx", "python3"):
             self.assertIn("`%s` is not on PATH" % name, proc.stderr)

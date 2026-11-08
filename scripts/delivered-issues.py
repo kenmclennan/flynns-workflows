@@ -37,9 +37,9 @@ def section(heading, entries, repos):
 
 
 def main():
-    repos = ds.config_list("repos", ds.DEFAULT_REPOS)
-    gh = ds.config("gh-command", "gh")
-    lc = ds.config("lc-command", "lc")
+    repos = ds.require_config_list("repos")
+    gh = ds.require_config("gh-command")
+    lc = ds.require_config("lc-command")
 
     conn = ds.connect()
     ds.migrate(conn)

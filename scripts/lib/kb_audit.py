@@ -10,6 +10,7 @@ import sys
 import tarfile
 
 import kb_audit_state
+import workflow_config
 
 RESERVED = ("index.md", "log.md")
 LINK = re.compile(r"(?<!!)\[(?:[^\[\]]|\[[^\]]*\])*\]\((?:<([^>\n]+)>|([^)\s<]+))(?:\s+\"[^\"]*\")?\)")
@@ -31,19 +32,8 @@ def data_dir():
     return kb_audit_state.data_dir()
 
 
-def config(key):
-    value = os.environ.get("LC_WORKFLOW_CONFIG_" + key.upper().replace("-", "_"))
-    if value is None or value.strip() == "":
-        return None
-    return value.strip()
-
-
-def require_config(key):
-    value = config(key)
-    if value is None:
-        sys.stderr.write("config key %s is required and is not set\n" % key)
-        sys.exit(1)
-    return value
+config = workflow_config.config
+require_config = workflow_config.require_config
 
 
 def emit(obj):

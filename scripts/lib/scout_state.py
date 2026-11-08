@@ -4,6 +4,8 @@ import os
 import sqlite3
 import sys
 
+import workflow_config
+
 SCHEMA_VERSION = 1
 
 SEED_FEEDS = [
@@ -204,23 +206,9 @@ def queue(conn):
     )
 
 
-def config(key, default=None):
-    value = os.environ.get("LC_WORKFLOW_CONFIG_" + key.upper().replace("-", "_"))
-    if value is None or value.strip() == "":
-        return default
-    return value.strip()
-
-
-def require_config(key, cast=str):
-    raw = config(key)
-    if raw is None:
-        sys.stderr.write("config key %r is required and not set\n" % key)
-        sys.exit(1)
-    try:
-        return cast(raw)
-    except ValueError:
-        sys.stderr.write("config key %r is %r, which is not a valid %s\n" % (key, raw, cast.__name__))
-        sys.exit(1)
+config = workflow_config.config
+config_list = workflow_config.config_list
+require_config = workflow_config.require_config
 
 
 def emit(obj):

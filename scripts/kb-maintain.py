@@ -4,6 +4,10 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+
+import workflow_config
+
 
 def run(args, cwd):
     return subprocess.run(args, cwd=cwd, capture_output=True, text=True)
@@ -15,7 +19,8 @@ def skip(reason):
 
 
 def main():
-    path = os.environ.get("LC_WORKFLOW_CONFIG_CHECKOUT_PATH")
+    qmd = shlex.split(workflow_config.require_config("qmd-command"))
+    path = workflow_config.config("checkout-path")
     if not path or not os.path.isdir(os.path.join(path, ".git")):
         skip("checkout-path is not a git checkout")
     branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], path).stdout.strip()
@@ -26,7 +31,6 @@ def main():
     pull = run(["git", "pull", "--ff-only"], path)
     if pull.returncode != 0:
         skip("fast-forward pull failed: %s" % pull.stderr.strip()[-200:])
-    qmd = shlex.split(os.environ.get("LC_WORKFLOW_CONFIG_QMD_COMMAND") or "qmd")
     for verb in ("update", "embed"):
         try:
             proc = run(qmd + [verb], path)

@@ -43,11 +43,11 @@ def fetch(gh, repo, since):
 
 
 def main():
-    repos = triage_state.config_list("repos", triage_state.DEFAULT_REPOS)
+    repos = triage_state.require_config_list("repos")
     labels = {l.lower() for l in triage_state.config_list("labels")}
     ignored = {a.lower() for a in triage_state.config_list("ignore-authors")}
-    lookback = int(triage_state.config("lookback-days", "14"))
-    gh = triage_state.config("gh-command", "gh")
+    lookback = triage_state.require_config("lookback-days", int)
+    gh = triage_state.require_config("gh-command")
 
     conn = triage_state.connect()
     triage_state.migrate(conn)

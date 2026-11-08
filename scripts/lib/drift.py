@@ -6,18 +6,13 @@ import shutil
 import subprocess
 import sys
 
+import workflow_config
+
 LAYOUT_VERSION = 1
 REPOS = ("engine", "workflows", "plugin")
 KEEP_SNAPSHOTS = 2
 CHANGES_CAP = 200
 CHANGES_REPOS = ("engine", "workflows")
-
-DEFAULT_URLS = {
-    "engine": "https://github.com/kenmclennan/lightcycle.git",
-    "workflows": "https://github.com/kenmclennan/lightcycle-workflows.git",
-    "plugin": "https://github.com/kenmclennan/lightcycle-plugin.git",
-}
-DEFAULT_SKILLS_PATH = "plugins/lightcycle/skills"
 
 # Where each kind of reference is defined: (repo, globs). A name is real when it
 # appears as a token in any file those globs select. One table, so an engine
@@ -43,19 +38,16 @@ def data_dir():
     return os.environ.get("LC_WORKFLOW_DATA_DIR") or os.getcwd()
 
 
-def config(key, default=None):
-    value = os.environ.get("LC_WORKFLOW_CONFIG_" + key.upper().replace("-", "_"))
-    if value is None or value.strip() == "":
-        return default
-    return value.strip()
+config = workflow_config.config
+require_config = workflow_config.require_config
 
 
 def url(name):
-    return config(name + "-url", DEFAULT_URLS[name])
+    return require_config(name + "-url")
 
 
 def skills_path():
-    return config("skills-path", DEFAULT_SKILLS_PATH).strip("/")
+    return require_config("skills-path").strip("/")
 
 
 def clone_path(name):

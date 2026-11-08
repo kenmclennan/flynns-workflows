@@ -1,5 +1,6 @@
 ---
 script: scripts/rank.py
+config: [threshold, kb-repo]
 accepts:
   scores: required
 produces:

@@ -9,13 +9,14 @@ lifecycle:
   install: scripts/install.py
   upgrade: scripts/upgrade.py
 config:
-  repos: optional
+  repos: required
   labels: optional
   ignore-authors: optional
-  lookback-days: optional
-  gh-command: optional
+  lookback-days: required
+  gh-command: required
 config-example:
   repos: kenmclennan/lightcycle
+  lookback-days: 14
   gh-command: scripts/tests/fake-gh.py
 ---
 

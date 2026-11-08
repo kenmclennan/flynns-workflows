@@ -6,6 +6,8 @@ import sys
 import tempfile
 import unittest
 
+from stage_env import stage_env, with_environment, workflow_env
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.dirname(HERE)
 GIT_ENV = dict(
@@ -54,9 +56,13 @@ class DriftTests(unittest.TestCase):
         make_repo(self.paths["plugin"], {SKILL_PATH: SKILL_OK})
 
     def run_script(self, script, stdin="{}", urls=None):
-        env = dict(os.environ, LC_WORKFLOW_DATA_DIR=self.data)
-        for name, path in (urls or self.paths).items():
-            env["LC_WORKFLOW_CONFIG_%s_URL" % name.upper()] = path
+        overrides = {"%s-url" % name: path for name, path in (urls or self.paths).items()}
+        if script == "check-references.py":
+            configured = stage_env("check-references", "plugin-drift-review")
+        else:
+            configured = workflow_env("plugin-drift-review", **overrides)
+        env = with_environment(os.environ, configured)
+        env["LC_WORKFLOW_DATA_DIR"] = self.data
         return subprocess.run(
             [sys.executable, os.path.join(SCRIPTS, script)],
             input=stdin, capture_output=True, text=True, cwd=self.data, env=env,

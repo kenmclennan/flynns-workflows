@@ -1,5 +1,6 @@
 ---
 script: scripts/close-issues.py
+config: [gh-command, lc-command]
 accepts:
   approved: required
 detail: [outcome, report, needs, reason]

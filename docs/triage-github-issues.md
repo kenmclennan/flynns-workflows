@@ -33,4 +33,4 @@ guard: scripts/new-issues.py (passes when an issue was not raised before)
 
 ## Operator setup
 
-All config keys are optional: `repos`, `labels`, `ignore-authors`, `lookback-days` and `gh-command` (a recorded-response fake for tests).
+`repos`, `lookback-days` and `gh-command` are required; the guard fails naming any that is unset. `labels` and `ignore-authors` stay optional: absence means no label filter and nobody ignored, and substitutes no value.

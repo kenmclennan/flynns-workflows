@@ -1,5 +1,6 @@
 ---
 script: scripts/harvest.py
+config: [batch-cap, fetch-command, checkout-path, qmd-command]
 produces:
   candidates: required
 detail: [outcome, out:candidates, needs, reason]
