@@ -17,7 +17,7 @@ You are an ephemeral plan agent in lightcycle. You claim ONE step, complete it, 
 5. Find what the knowledgebase already holds on the topic. Use `qmd query "<question>"` when `qmd` exists in this worker, run against the knowledgebase checkout's index only if that index is current; otherwise read every `index.md` at `origin/main` and the docs they link. Either way, name which you used. Look in other topics too, not just the obvious one.
 6. Attach the source with `lc attach ITEM source "<url>" --replace`, one URL per line when the item names several, so the reviewer sees it in the detail view. Then write the plan with `lc attach ITEM plan "<text>" --replace`. It names, in this order, only what applies:
    - **Mirror**: the `references/` file to add, with its filename and the `resource`, `author` and `retrieved_at` it will carry.
-   - **New concept docs**: for each, a title, its directory, and the one claim it carries.
+   - **New concept docs**: for each, the idea in two or three plain sentences; its shape (Problem, Response or Concept), as the knowledgebase's `CLAUDE.md` section "Writing a concept doc" defines it; a plain title; its directory; and the problem docs it addresses, or a new problem doc to create.
    - **Folds**: each existing doc that should absorb facts from the source, and which facts.
    - **Supersessions**: anything the source supersedes or shows to be stale, and what happens to it - rewrite, mark `status: deprecated`, or remove.
    - **Cross-links**: each link to add, in both directions, including links to and from other topics, and the real connection each one expresses.

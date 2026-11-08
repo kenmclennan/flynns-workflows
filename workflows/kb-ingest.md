@@ -19,7 +19,7 @@ One item takes one approved source into the knowledgebase (`kenmclennan/knowledg
 
 Two human gates, one PR, one pass that closes with the item. `plan` reads the source or sources and the knowledgebase and writes the ingest plan as an item artifact; `review-plan` is the first gate and is read in the inbox, not on a PR, so no plan document ever lands in the knowledgebase - a merged plan would be workflow state sitting next to knowledge. `changes` and `escalate replan` return to `plan` as rework rounds in the same pass, so there is no `pass-end:`. A source already mirrored, or one that adds nothing, still produces a plan saying so and ends `planned`, so a human sees it and closes it with `rejected`.
 
-After approval, `write` builds exactly the approved plan on the phase branch. `check` is a script stage that spends no tokens: prettier, markdownlint, relative links, required frontmatter, reachability from an `index.md`, and every cited reference linked in the body. `review` reads the diff against the plan and the conventions. Then the generic PR machinery runs - `open-pr`, `poll-ci`, `watch-ci`, `await-merge` - and Ken's merge is the second gate. Three `broken` results in a row from `check`, or the review rounds cap, route to `escalate`, which decides between `replan` and `abandoned`.
+After approval, `write` builds exactly the approved plan on the phase branch. `check` is a script stage that spends no tokens: prettier, markdownlint, relative links, required frontmatter, reachability from an `index.md`, and every cited reference linked in the body, every `addresses:` path resolving, and each Problem doc's response list matching the docs that address it. `cold-read` stands in for a reader who has not read the source: it reads only the changed concept docs, explains each back and lists what is unclear, and `unclear` returns to `write`. `review` then reads the diff against the plan and the conventions. Then the generic PR machinery runs - `open-pr`, `poll-ci`, `watch-ci`, `await-merge` - and Ken's merge is the second gate. Three `broken` results in a row from `check`, or the review rounds cap (which `cold-read` and `review` share), route to `escalate`, which decides between `replan` and `abandoned`.
 
 `plan` and `review-plan` are not PR-gated, but the phase block is all or nothing, so they share the `ingest` phase with everything after them and are handed a worktree they do not commit to. `cleanup`, `review-ci` and `await-merge` are this bundle's own step files (`kb-cleanup`, `kb-review-ci`, `kb-await-merge`): `cleanup` closes the item once the PR merges, and `review-ci` reworks a failing PR through `write`; `await-merge` also shows the source row so the merge gate is one row from the article.
 
@@ -36,6 +36,7 @@ phase:
   review-plan       ingest
   write             ingest
   check             ingest
+  cold-read         ingest
   review            ingest
   open-pr           ingest
   poll-ci           ingest
@@ -53,6 +54,7 @@ display:
   review-plan       Review the ingest plan
   write             Writing the ingest
   check             Checking the bundle
+  cold-read         Cold-reading the docs
   review            Reviewing the ingest
   open-pr           Opening the PR
   poll-ci           Watching CI
@@ -75,8 +77,10 @@ edges:
   review-plan       approved       write             primary
   review-plan       changes        plan
   write             done           check             primary
-  check             clean          review            primary
+  check             clean          cold-read         primary
   check             broken         write
+  cold-read         clear          review            primary
+  cold-read         unclear        write
   review            approved       open-pr           primary
   review            rejected       write
   escalate          replan         plan
@@ -117,11 +121,14 @@ hooks:
   ci_failure            poll-ci      failed
   ci_failed_cap         check        broken         3  escalate
   ci_failed_cap         watch-ci     ci-failed      3  review-ci
+  review_rounds_cap     cold-read    unclear           escalate
   review_rounds_cap     review       rejected          escalate
   review_rounds_cap     watch-ci     review-rework     review-ci
   mention_token         await-merge  @lc
 
 signals:
+  cold-read         review_rounds     unclear
+  cold-read         resets            unclear
   review            review_rounds     rejected
   review            resets            rejected
   watch-ci          review_rounds     review-rework

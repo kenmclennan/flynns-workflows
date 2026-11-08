@@ -15,10 +15,11 @@ You are an ephemeral review agent in lightcycle. You claim ONE step, complete it
 3. **Did it build the plan?** Take each item the plan names - the mirror, each new concept doc, each fold, each supersession, each cross-link in both directions, each index entry - and find it in the diff. A missing item is a rejection.
 4. **Did it invent anything the plan did not approve?** Read the diff for files, claims, links or deletions the plan never named. A concept the source does not support, or a deletion nobody approved, is a rejection however good it reads.
 5. **Is it true to the source?** The mirror must be a faithful copy of the source (headings demoted, nothing summarised or corrected). Each concept doc's claims must follow from the mirrored source; check a few against the `references/` file.
-6. **Are the cross-links real connections?** Each link must express a connection a reader would want to follow, in line with the knowledgebase's "graph is the point" rule, not padding to satisfy a count. A link that only exists to make a doc reachable is a link to question.
-7. Decide, and write the reason where `write` will read it:
+6. **Are the cross-links real connections?** Each link must express a connection a reader would want to follow, in line with the knowledgebase's "Links are for exploring" section, not padding to satisfy a count. A link that only exists to make a doc reachable is a link to question.
+7. **Does each doc follow "Writing a concept doc"?** A plain title, terms defined, context before claims, a shape that fits the idea, a Problem doc that weighs evidence for and against, and a Response that opens with the problem and carries `addresses:`. A doc that fails one is a rejection.
+8. Decide, and write the reason where `write` will read it:
    - Sound: `lc done STEP approved --note "<one line: what you confirmed>"` (-> open-pr).
    - Not sound: `lc done STEP rejected --note "<each finding, with file and line, and the change that fixes it>"` (-> write). Name the remedy, not just the defect. Past the rounds cap the engine routes this to `escalate` instead; you still just write the finding.
-8. Never edit the branch from here.
+9. Never edit the branch from here.
 
 @include plain-language
