@@ -9,9 +9,9 @@ lifecycle:
   install: scripts/delivered-install.py
   upgrade: scripts/delivered-upgrade.py
 config:
-  repos: optional
-  gh-command: optional
-  lc-command: optional
+  repos: required
+  gh-command: required
+  lc-command: required
 config-example:
   repos: kenmclennan/lightcycle
   gh-command: scripts/tests/fake-gh.py

@@ -43,8 +43,8 @@ def main():
     except ValueError as exc:
         delivered.fail("stdin is not JSON: %s" % exc)
     approved = load_approved(stdin)
-    gh = ds.config("gh-command", "gh")
-    lc = ds.config("lc-command", "lc")
+    gh = ds.require_config("gh-command")
+    lc = ds.require_config("lc-command")
 
     closed = []
     skipped = []

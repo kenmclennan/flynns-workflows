@@ -17,7 +17,7 @@ One SQLite file, `scout.db`, in the workflow's data directory, with `feeds`, `se
 
 ## Operator setup
 
-Config under `workflow-flynns-workflows-kb-scout:`. `threshold`, `batch-cap` and `kb-repo` are required and the install fails without them. `checkout-path` and `qmd-command` are optional and let `evaluate` query the `qmd` index; without them it reads `index.md` files. `fetch-command` is a recorded-response fake for tests.
+Config under `workflow-flynns-workflows-kb-scout:`. `threshold`, `batch-cap` and `kb-repo` are required, and the install checks their values when set. `checkout-path` and `qmd-command` are also required (the install skips the `qmd` PATH check while `qmd-command` is unset): `evaluate` queries the `qmd` index in that checkout, and reads `index.md` files only when a query fails. `fetch-command` is the one optional key: absence selects the built-in HTTP fetch and substitutes no value, and it names a recorded-response fake in tests.
 
 The install seeds `https://martinfowler.com/feed.atom` and `https://tidyfirst.substack.com/feed`. The feed parser and link extractor are Python's standard `xml.etree.ElementTree` and `html.parser`, so there is nothing to install.
 

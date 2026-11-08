@@ -1,5 +1,6 @@
 ---
 script: scripts/check-references.py
+config: [skills-path]
 produces:
   missing-references: optional
   review-context: optional

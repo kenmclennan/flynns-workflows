@@ -7,6 +7,8 @@ import sys
 import tempfile
 import unittest
 
+from stage_env import stage_env, with_environment, workflow_env
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.dirname(HERE)
 FAKE_GH = os.path.join(HERE, "fake-gh.py")
@@ -14,12 +16,12 @@ REPOS = "kenmclennan/lightcycle,kenmclennan/lightcycle-plugin"
 
 
 def run(script, data_dir, stdin="{}", **config):
-    env = dict(os.environ)
+    if script == "record-raised.py":
+        configured = stage_env("record-raised", "triage-github-issues", **config)
+    else:
+        configured = workflow_env("triage-github-issues", **dict({"gh-command": FAKE_GH, "repos": REPOS}, **config))
+    env = with_environment(os.environ, configured)
     env["LC_WORKFLOW_DATA_DIR"] = data_dir
-    env["LC_WORKFLOW_CONFIG_GH_COMMAND"] = FAKE_GH
-    env["LC_WORKFLOW_CONFIG_REPOS"] = REPOS
-    for key, value in config.items():
-        env["LC_WORKFLOW_CONFIG_" + key.upper().replace("-", "_")] = value
     return subprocess.run(
         [sys.executable, os.path.join(SCRIPTS, script)],
         input=stdin, capture_output=True, text=True, cwd=data_dir, env=env,

@@ -28,7 +28,8 @@ def main():
     if failures:
         sys.stderr.write("error: kb-scout cannot be installed: %s\n" % "; ".join(failures))
         sys.exit(1)
-    if not shutil.which(scout_state.config("qmd-command", "qmd").split()[0]):
+    qmd = scout_state.config("qmd-command")
+    if qmd and not shutil.which(qmd.split()[0]):
         sys.stderr.write("warning: qmd is not on PATH, so evaluate falls back to reading index.md files\n")
 
     os.makedirs(scout_state.data_dir(), exist_ok=True)

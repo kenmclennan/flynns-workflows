@@ -19,13 +19,14 @@ def main():
         sys.stderr.write("schedule_state names no SHA for one of the repos; nothing to check\n")
         sys.exit(1)
 
+    skills = drift.skills_path()
+
     try:
         roots = {n: drift.snapshot(n, state["to"][n]) for n in drift.REPOS}
     except RuntimeError as exc:
         sys.stderr.write("%s\n" % exc)
         sys.exit(1)
 
-    skills = drift.skills_path()
     if not os.path.isdir(os.path.join(roots["plugin"], skills)):
         sys.stderr.write("skills path %s is not in the plugin at %s\n" % (skills, state["to"]["plugin"]))
         sys.exit(1)

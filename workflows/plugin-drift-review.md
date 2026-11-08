@@ -11,12 +11,15 @@ lifecycle:
   maintain: scripts/drift-maintain.py
   cron: 0 7 * * *
 config:
-  engine-url: optional
-  workflows-url: optional
-  plugin-url: optional
-  skills-path: optional
+  engine-url: required
+  workflows-url: required
+  plugin-url: required
+  skills-path: required
 config-example:
   engine-url: scripts/tests/no-such-repo
+  workflows-url: scripts/tests/no-such-repo
+  plugin-url: scripts/tests/no-such-repo
+  skills-path: plugins/lightcycle/skills
 ---
 
 # Plugin-drift-review

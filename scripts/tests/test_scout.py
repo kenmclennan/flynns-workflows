@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(SCRIPTS, "lib"))
 
 import scout_fetch
 import scout_state
+from stage_env import stage_env, with_environment, workflow_env
 
 FAKE_FETCH = os.path.join(HERE, "fake-fetch.py")
 FOWLER = "https://martinfowler.com/feed.atom"
@@ -23,17 +24,21 @@ BECK_POST = "https://tidyfirst.substack.com/p/c"
 NOW = "2026-10-18T09:00:00Z"
 
 
+STAGE_STEPS = {
+    "harvest.py": "harvest",
+    "rank.py": "rank",
+    "record-decisions.py": "record-decisions",
+}
+
+
 def run(script, data_dir, stdin="{}", cwd=None, **config):
-    env = dict(os.environ)
-    for key in [k for k in env if k.startswith("LC_WORKFLOW_CONFIG_")]:
-        del env[key]
+    overrides = dict({"fetch-command": FAKE_FETCH, "threshold": "6", "batch-cap": "10"}, **config)
+    if script in STAGE_STEPS:
+        configured = stage_env(STAGE_STEPS[script], "kb-scout", **overrides)
+    else:
+        configured = workflow_env("kb-scout", **overrides)
+    env = with_environment(os.environ, configured)
     env["LC_WORKFLOW_DATA_DIR"] = data_dir
-    env["LC_WORKFLOW_CONFIG_FETCH_COMMAND"] = FAKE_FETCH
-    env["LC_WORKFLOW_CONFIG_THRESHOLD"] = "6"
-    env["LC_WORKFLOW_CONFIG_BATCH_CAP"] = "10"
-    env["LC_WORKFLOW_CONFIG_KB_REPO"] = "kenmclennan/knowledgebase"
-    for key, value in config.items():
-        env["LC_WORKFLOW_CONFIG_" + key.upper().replace("-", "_")] = value
     return subprocess.run(
         [sys.executable, os.path.join(SCRIPTS, script)],
         input=stdin, capture_output=True, text=True, cwd=cwd or data_dir, env=env,
@@ -404,19 +409,27 @@ class InstallTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.dir)
 
     def _bare_env(self):
-        env = dict(os.environ, LC_WORKFLOW_DATA_DIR=self.dir)
-        for key in [k for k in env if k.startswith("LC_WORKFLOW_CONFIG_")]:
-            del env[key]
+        env = with_environment(os.environ, {})
+        env["LC_WORKFLOW_DATA_DIR"] = self.dir
         return env
 
+    def _install(self, env):
+        return subprocess.run([sys.executable, os.path.join(SCRIPTS, "scout-install.py")], capture_output=True, text=True, env=env)
+
     def test_install_passes_with_no_config_set(self):
-        proc = subprocess.run([sys.executable, os.path.join(SCRIPTS, "scout-install.py")], capture_output=True, text=True, env=self._bare_env())
+        env = with_environment(self._bare_env(), workflow_env("kb-scout", **{"qmd-command": os.path.join(HERE, "fake-qmd.py")}))
+        proc = self._install(env)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_install_passes_with_an_unset_qmd_command(self):
+        env = with_environment(self._bare_env(), workflow_env("kb-scout"))
+        del env["LC_WORKFLOW_CONFIG_QMD_COMMAND"]
+        proc = self._install(env)
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
     def test_install_fails_on_a_malformed_key(self):
-        env = self._bare_env()
-        env["LC_WORKFLOW_CONFIG_THRESHOLD"] = "high"
-        proc = subprocess.run([sys.executable, os.path.join(SCRIPTS, "scout-install.py")], capture_output=True, text=True, env=env)
+        env = with_environment(self._bare_env(), workflow_env("kb-scout", threshold="high"))
+        proc = self._install(env)
         self.assertEqual(proc.returncode, 1)
         self.assertIn("threshold", proc.stderr)
 

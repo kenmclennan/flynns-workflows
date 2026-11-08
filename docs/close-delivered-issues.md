@@ -34,4 +34,4 @@ guard: scripts/delivered-issues.py (passes when an issue is new or changed)
 
 ## Operator setup
 
-All config keys are optional: `repos`, `gh-command` and `lc-command`. The last two are recorded-response fakes for tests.
+`repos`, `gh-command` and `lc-command` are all required, and the guard and the `close-issues` stage fail naming any that is unset. `gh-command` and `lc-command` name the `gh` and `lc` binaries (a recorded-response fake in tests); `repos` is a comma-separated list of `owner/repo`.

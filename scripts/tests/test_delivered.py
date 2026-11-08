@@ -7,6 +7,8 @@ import sys
 import tempfile
 import unittest
 
+from stage_env import stage_env, with_environment, workflow_env
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.dirname(HERE)
 FAKE_GH = os.path.join(HERE, "fake-gh.py")
@@ -37,12 +39,16 @@ class DeliveredTests(unittest.TestCase):
         self.run_script("delivered-install.py")
 
     def run_script(self, script, stdin="{}", **env):
-        full = dict(os.environ)
+        overrides = {"gh-command": FAKE_GH, "lc-command": FAKE_LC, "repos": LC}
+        if script == "close-issues.py":
+            configured = stage_env("close-issues", "close-delivered-issues", **overrides)
+        elif script == "record-proposed.py":
+            configured = stage_env("record-proposed", "close-delivered-issues")
+        else:
+            configured = workflow_env("close-delivered-issues", **overrides)
+        full = with_environment(os.environ, configured)
         full.update({
             "LC_WORKFLOW_DATA_DIR": self.dir,
-            "LC_WORKFLOW_CONFIG_GH_COMMAND": FAKE_GH,
-            "LC_WORKFLOW_CONFIG_LC_COMMAND": FAKE_LC,
-            "LC_WORKFLOW_CONFIG_REPOS": LC,
             "FAKE_GH_RECORDINGS": self.gh,
             "FAKE_LC_ITEMS": self.items,
             "FAKE_GH_LOG": self.log,

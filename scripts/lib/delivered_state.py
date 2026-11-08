@@ -5,14 +5,16 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import triage_state
+import workflow_config
 
 SCHEMA_VERSION = 1
 
-config = triage_state.config
-config_list = triage_state.config_list
+config = workflow_config.config
+config_list = workflow_config.config_list
+require_config = workflow_config.require_config
+require_config_list = workflow_config.require_config_list
 emit = triage_state.emit
 data_dir = triage_state.data_dir
-DEFAULT_REPOS = triage_state.DEFAULT_REPOS
 
 
 def db_path():

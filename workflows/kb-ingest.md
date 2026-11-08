@@ -7,7 +7,7 @@ lifecycle:
   cron: 0 * * * *
 config:
   checkout-path: required
-  qmd-command: optional
+  qmd-command: required
 config-example:
   checkout-path: /path/to/knowledgebase
   qmd-command: scripts/tests/fake-qmd.py

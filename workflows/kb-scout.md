@@ -12,13 +12,15 @@ config:
   threshold: required
   batch-cap: required
   kb-repo: required
-  checkout-path: optional
-  qmd-command: optional
+  checkout-path: required
+  qmd-command: required
   fetch-command: optional
 config-example:
   threshold: 6.0
   batch-cap: 10
   kb-repo: kenmclennan/knowledgebase
+  checkout-path: /path/to/knowledgebase
+  qmd-command: scripts/tests/fake-qmd.py
   fetch-command: scripts/tests/fake-fetch.py
 ---
 

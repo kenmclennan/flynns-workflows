@@ -1,5 +1,6 @@
 ---
 script: scripts/kb-measure.py
+config: [knowledgebase-url, min-cross-topic-links]
 produces:
   measurements: optional
   review-context: optional

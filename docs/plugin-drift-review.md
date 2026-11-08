@@ -36,4 +36,4 @@ guard: scripts/moved.py (passes when a repo's main SHA has moved)
 
 ## Operator setup
 
-All config keys are optional: `engine-url`, `workflows-url`, `plugin-url` and `skills-path`. The bundle also runs a daily maintenance script (`0 7 * * *`).
+All config keys are required: `engine-url`, `workflows-url`, `plugin-url` and `skills-path`. A key that is unset fails the script naming it; none has a built-in default. The bundle also runs a daily maintenance script (`0 7 * * *`).

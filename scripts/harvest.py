@@ -41,6 +41,8 @@ def main():
     entries, marks = load_state(stdin)
     batch_cap = scout_state.require_config("batch-cap", int)
     fetch_command = scout_state.config("fetch-command")
+    kb_checkout = scout_state.require_config("checkout-path")
+    qmd = scout_state.require_config("qmd-command")
 
     in_kb = scout_fetch.kb_resources(os.getcwd())
     if in_kb is None:
@@ -80,8 +82,8 @@ def main():
         conn.close()
 
     candidates = {
-        "kb_checkout": scout_state.config("checkout-path", "none"),
-        "qmd": scout_state.config("qmd-command", "qmd"),
+        "kb_checkout": kb_checkout,
+        "qmd": qmd,
         "batch_cap": batch_cap,
         "candidates": [
             {"url": r["url"], "title": r["title"], "author": r["author"], "tier": r["tier"], "inbound": r["inbound"], "feed": r["feed"]}

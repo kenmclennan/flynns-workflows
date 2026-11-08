@@ -14,6 +14,6 @@ Every convention the steps follow lives in the knowledgebase's own `CLAUDE.md`. 
 
 ## Operator setup
 
-Set `checkout-path` to Ken's local checkout of the knowledgebase. The hourly `maintain` hook fast-forwards it when it is on `main` and clean, then runs `qmd update && qmd embed`. `qmd-command` is optional and points at a fake `qmd` in tests.
+Set `checkout-path` to Ken's local checkout of the knowledgebase. The hourly `maintain` hook fast-forwards it when it is on `main` and clean, then runs `qmd update && qmd embed`. `qmd-command` is required and names the `qmd` binary (a fake in tests); the install skips its PATH check when unset, and `maintain` fails naming it.
 
 The knowledgebase's `.github/workflows/lint.yml` should be on its `main` before the first live ingest, so `poll-ci` has a CI run to watch. Without it the PR waits on the merge gate alone.
