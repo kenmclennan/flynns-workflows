@@ -12,7 +12,7 @@ import kb_audit_state
 
 def today():
     override = os.environ.get("KB_AUDIT_TODAY")
-    return datetime.date.fromisoformat(override) if override else datetime.date.today()
+    return datetime.date.fromisoformat(override) if override else datetime.datetime.now().astimezone().date()
 
 
 def main():

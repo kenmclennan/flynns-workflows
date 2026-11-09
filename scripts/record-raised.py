@@ -2,6 +2,7 @@
 import datetime
 import json
 import os
+import sqlite3
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
@@ -46,7 +47,7 @@ def main():
                 "ON CONFLICT(repo) DO UPDATE SET high_water = MAX(high_water, excluded.high_water)",
                 list(marks.items()),
             )
-    except Exception as exc:
+    except (sqlite3.Error, OSError) as exc:
         sys.stderr.write("could not record raised issues: %s\n" % exc)
         sys.exit(1)
     finally:

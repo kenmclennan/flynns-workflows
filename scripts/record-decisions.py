@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import sqlite3
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
@@ -61,7 +62,7 @@ def main():
                 scout_state.record_decision(conn, d["url"], d["verdict"], d["reason"], d["item"], now)
             for f in feeds:
                 scout_state.add_feed(conn, f["url"], f["kind"], f["tier"], f["areas"], f["reason"], now)
-    except Exception as exc:
+    except (sqlite3.Error, OSError) as exc:
         sys.stderr.write("could not record decisions: %s\n" % exc)
         sys.exit(1)
     finally:

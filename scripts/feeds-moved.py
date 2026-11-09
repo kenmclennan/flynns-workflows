@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
@@ -30,7 +31,7 @@ def main():
             continue
         try:
             parsed = scout_fetch.parse_feed(body)
-        except Exception as exc:
+        except (ET.ParseError, ValueError) as exc:
             sys.stderr.write("could not parse %s: %s\n" % (feed["url"], exc))
             continue
         for entry in scout_fetch.new_entries(parsed, feed["high_water"], known):
