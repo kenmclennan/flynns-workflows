@@ -365,10 +365,12 @@ class StageTests(Base):
         })
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout)["outcome"], "written")
-        cli = lambda *a: subprocess.run(
-            [sys.executable, os.path.join(SCRIPTS, "scout-cli.py"), *a],
-            capture_output=True, text=True, env=dict(os.environ, LC_WORKFLOW_DATA_DIR=self.data),
-        ).stdout
+        def cli(*a):
+            return subprocess.run(
+                [sys.executable, os.path.join(SCRIPTS, "scout-cli.py"), *a],
+                capture_output=True, text=True, env=dict(os.environ, LC_WORKFLOW_DATA_DIR=self.data),
+            ).stdout
+
         self.assertIn("accept", cli("why", GUARDRAILS))
         self.assertIn("on point", cli("why", GUARDRAILS))
         self.assertIn("KB-7", cli("why", GUARDRAILS))

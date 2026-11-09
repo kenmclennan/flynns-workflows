@@ -1,5 +1,6 @@
 import datetime
 import email.utils
+import http.client
 import os
 import re
 import shlex
@@ -34,7 +35,7 @@ def fetch(url, command=None):
         request = urllib.request.Request(url, headers={"User-Agent": "flynns-workflows-kb-scout"})
         with urllib.request.urlopen(request, timeout=30) as response:
             return response.read().decode("utf-8", errors="replace")
-    except Exception as exc:
+    except (OSError, ValueError, http.client.HTTPException) as exc:
         sys.stderr.write("fetch failed for %s: %s\n" % (url, exc))
         return None
 
