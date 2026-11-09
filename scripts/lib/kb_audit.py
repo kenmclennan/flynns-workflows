@@ -9,11 +9,12 @@ import subprocess
 import sys
 import tarfile
 
+from kb_doc import address_paths, body_links, resolve, resolve_address, source_resources, split_frontmatter, top_level_keys
+
 import kb_audit_state
 import workflow_config
 
 RESERVED = ("index.md", "log.md")
-LINK = re.compile(r"(?<!!)\[(?:[^\[\]]|\[[^\]]*\])*\]\((?:<([^>\n]+)>|([^)\s<]+))(?:\s+\"[^\"]*\")?\)")
 HEADING = re.compile(r"^#+\s+(.*)$")
 BACKTICKED_MD = re.compile(r"`([^`\s]+\.md)`")
 GROUPED = ("related-overflow", "citation-without-link")
@@ -21,7 +22,6 @@ RELATED_MAX = 8
 RELATED = re.compile(r"^##[ \t]+Related[ \t]*$(.*?)(?=^##[ \t]|\Z)", re.M | re.S)
 RESPONDS = re.compile(r"^##[ \t]+What responds to it[ \t]*$(.*?)(?=^##[ \t]|\Z)", re.M | re.S)
 EXAMPLES = 5
-FENCE = re.compile(r"^\s*(```+|~~~+)")
 MD_ERROR = re.compile(r"^(?:\./)?(\S[^:]*\.md):\d+")
 CHUNK = 200
 NUMBER_WORDS = ("two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty").split()
@@ -100,44 +100,6 @@ def export_snapshot(sha):
     return dest
 
 
-def split_frontmatter(text):
-    if not text.startswith("---\n"):
-        return None, text
-    end = text.find("\n---", 4)
-    if end == -1:
-        return None, text
-    return text[4:end], text[end + 4:].lstrip("\n")
-
-
-def top_level_keys(front):
-    return {m.group(1): m.group(2).strip().strip("\"'") for m in re.finditer(r"^([A-Za-z_][\w-]*):[ \t]*(.*)$", front, re.M)}
-
-
-def source_resources(front):
-    block = re.search(r"^sources:[ \t]*\n((?:[ \t]+.*\n?|\n)*)", front + "\n", re.M)
-    if not block:
-        return []
-    return [m.group(1).strip().strip("\"'") for m in re.finditer(r"^\s*-?\s*resource:\s*(.+)$", block.group(1), re.M)]
-
-
-def body_links(body):
-    links, fenced = [], False
-    for line in body.split("\n"):
-        if FENCE.match(line):
-            fenced = not fenced
-            continue
-        if not fenced:
-            links.extend(m.group(1) or m.group(2) for m in LINK.finditer(re.sub(r"`[^`]*`", "", line)))
-    return links
-
-
-def resolve(path, target):
-    target = target.split("#", 1)[0].split("?", 1)[0]
-    if not target or target.startswith("/") or re.match(r"^[a-z][a-z0-9+.-]*:", target, re.I):
-        return None
-    return posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
-
-
 def markdown_files(root):
     found = []
     for base, dirs, files in os.walk(root):
@@ -178,37 +140,6 @@ def topic_of(path):
     return parts[0]
 
 
-def address_paths(front):
-    match = re.search(r"^addresses:[ \t]*(.*)$", front, re.M)
-    if not match:
-        return []
-    rest = match.group(1).strip()
-    if not rest and front[match.end():].lstrip().startswith("["):
-        rest = "["
-    if rest.startswith("["):
-        start = front.index("[", match.start(1))
-        end = front.find("]", start)
-        raw = front[start + 1:end if end != -1 else len(front)].split(",")
-    elif rest:
-        raw = [rest]
-    else:
-        raw = []
-        for line in front[match.end():].split("\n"):
-            item = re.match(r"^[ \t]*-[ \t]*(.+)$", line)
-            if item:
-                raw.append(item.group(1))
-            elif line.strip():
-                break
-    return [r.strip().strip("\"'").strip() for r in raw if r.strip().strip("\"'").strip()]
-
-
-def resolve_address(path, target, docs):
-    for candidate in (resolve(path, target), posixpath.normpath(target)):
-        if candidate and candidate in docs:
-            return candidate
-    return None
-
-
 def related_count(body):
     section = RELATED.search(body)
     if not section:
@@ -228,7 +159,7 @@ def load(root):
     for path in markdown_files(root):
         with open(os.path.join(root, path), encoding="utf-8") as handle:
             front, body = split_frontmatter(handle.read())
-        keys = top_level_keys(front) if front is not None else {}
+        keys = top_level_keys(front, unquote=True) if front is not None else {}
         links = []
         if not is_reference(path):
             for link in body_links(body):
@@ -304,7 +235,7 @@ def addresses_defects(docs, excluded):
         if not is_concept(path, excluded):
             continue
         for target in doc["addresses"]:
-            resolved = resolve_address(path, target, docs)
+            resolved = resolve_address(path, target, docs.__contains__)
             if resolved:
                 addressing.setdefault(resolved, set()).add(path)
             else:

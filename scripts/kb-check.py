@@ -6,10 +6,12 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+
+from kb_doc import address_paths, body_links, resolve, resolve_address, source_resources, split_frontmatter, top_level_keys
+
 BASE = os.environ.get("KB_CHECK_BASE", "origin/main")
 RESERVED = ("index.md", "log.md")
-LINK = re.compile(r"(?<!!)\[(?:[^\[\]]|\[[^\]]*\])*\]\((?:<([^>\n]+)>|([^)\s<]+))(?:\s+\"[^\"]*\")?\)")
-FENCE = re.compile(r"^\s*(```+|~~~+)")
 
 
 def git(*args):
@@ -25,57 +27,6 @@ def changed_files():
     tracked = git("diff", "--name-only", "--diff-filter=AMR", base, "--", "*.md").split("\n")
     fresh = git("ls-files", "--others", "--exclude-standard", "--", "*.md").split("\n")
     return sorted({p for p in tracked + fresh if p})
-
-
-def split_frontmatter(text):
-    if not text.startswith("---\n"):
-        return None, text
-    end = text.find("\n---", 4)
-    if end == -1:
-        return None, text
-    return text[4:end], text[end + 4:].lstrip("\n")
-
-
-def top_level_keys(front):
-    return {m.group(1): m.group(2).strip() for m in re.finditer(r"^([A-Za-z_][\w-]*):[ \t]*(.*)$", front, re.M)}
-
-
-def source_resources(front):
-    block = re.search(r"^sources:[ \t]*\n((?:[ \t]+.*\n?|\n)*)", front + "\n", re.M)
-    if not block:
-        return []
-    return [m.group(1).strip().strip("\"'") for m in re.finditer(r"^\s*-?\s*resource:\s*(.+)$", block.group(1), re.M)]
-
-
-def address_paths(front):
-    match = re.search(r"^addresses:[ \t]*(.*)$", front, re.M)
-    if not match:
-        return []
-    rest = match.group(1).strip()
-    if not rest and front[match.end():].lstrip().startswith("["):
-        rest = "["
-    if rest.startswith("["):
-        start = front.index("[", match.start(1))
-        end = front.find("]", start)
-        raw = front[start + 1:end if end != -1 else len(front)].split(",")
-    elif rest:
-        raw = [rest]
-    else:
-        raw = []
-        for line in front[match.end():].split("\n"):
-            item = re.match(r"^[ \t]*-[ \t]*(.+)$", line)
-            if item:
-                raw.append(item.group(1))
-            elif line.strip():
-                break
-    return [r.strip().strip("\"'").strip() for r in raw if r.strip().strip("\"'").strip()]
-
-
-def resolve_address(path, target):
-    for candidate in (resolve(path, target), posixpath.normpath(target)):
-        if candidate and os.path.isfile(candidate):
-            return candidate
-    return None
 
 
 def is_problem(path):
@@ -108,7 +59,7 @@ def addressing_map():
             continue
         front, _ = split_frontmatter(read(path))
         for target in address_paths(front or ""):
-            resolved = resolve_address(path, target)
+            resolved = resolve_address(path, target, os.path.isfile)
             if resolved:
                 mapping.setdefault(resolved, set()).add(path)
     return mapping
@@ -123,7 +74,7 @@ def problem_failures(files, addressed):
             problems.add(path)
         front, _ = split_frontmatter(read(path))
         for target in address_paths(front or ""):
-            resolved = resolve_address(path, target)
+            resolved = resolve_address(path, target, os.path.isfile)
             if resolved and is_problem(resolved):
                 problems.add(resolved)
     failures = []
@@ -134,24 +85,6 @@ def problem_failures(files, addressed):
         for missing in sorted(addressing - listed):
             failures.append("%s: %s addresses it but is not listed under \"What responds to it\"" % (problem, missing))
     return failures
-
-
-def body_links(body):
-    links, fenced = [], False
-    for line in body.split("\n"):
-        if FENCE.match(line):
-            fenced = not fenced
-            continue
-        if not fenced:
-            links.extend(m.group(1) or m.group(2) for m in LINK.finditer(re.sub(r"`[^`]*`", "", line)))
-    return links
-
-
-def resolve(path, target):
-    target = target.split("#", 1)[0].split("?", 1)[0]
-    if not target or re.match(r"^[a-z][a-z0-9+.-]*:", target, re.I):
-        return None
-    return posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
 
 
 def read(path):
@@ -226,7 +159,7 @@ def check(files):
             if path not in reachable:
                 failures.append("%s: not reachable from index.md by following links" % path)
             for target in address_paths(front or ""):
-                if not resolve_address(path, target):
+                if not resolve_address(path, target, os.path.isfile):
                     failures.append("%s: addresses %s does not resolve" % (path, target))
             for resource in source_resources(front or ""):
                 cited = [c for c in (posixpath.normpath(resource), resolve(path, resource)) if c and c.startswith("references/") and os.path.exists(c)]
