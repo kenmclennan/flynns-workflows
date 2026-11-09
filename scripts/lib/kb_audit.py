@@ -16,7 +16,10 @@ RESERVED = ("index.md", "log.md")
 LINK = re.compile(r"(?<!!)\[(?:[^\[\]]|\[[^\]]*\])*\]\((?:<([^>\n]+)>|([^)\s<]+))(?:\s+\"[^\"]*\")?\)")
 HEADING = re.compile(r"^#+\s+(.*)$")
 BACKTICKED_MD = re.compile(r"`([^`\s]+\.md)`")
-GROUPED = ("thin-doc", "citation-without-link")
+GROUPED = ("related-overflow", "citation-without-link")
+RELATED_MAX = 8
+RELATED = re.compile(r"^##[ \t]+Related[ \t]*$(.*?)(?=^##[ \t]|\Z)", re.M | re.S)
+RESPONDS = re.compile(r"^##[ \t]+What responds to it[ \t]*$(.*?)(?=^##[ \t]|\Z)", re.M | re.S)
 EXAMPLES = 5
 FENCE = re.compile(r"^\s*(```+|~~~+)")
 MD_ERROR = re.compile(r"^(?:\./)?(\S[^:]*\.md):\d+")
@@ -175,6 +178,51 @@ def topic_of(path):
     return parts[0]
 
 
+def address_paths(front):
+    match = re.search(r"^addresses:[ \t]*(.*)$", front, re.M)
+    if not match:
+        return []
+    rest = match.group(1).strip()
+    if not rest and front[match.end():].lstrip().startswith("["):
+        rest = "["
+    if rest.startswith("["):
+        start = front.index("[", match.start(1))
+        end = front.find("]", start)
+        raw = front[start + 1:end if end != -1 else len(front)].split(",")
+    elif rest:
+        raw = [rest]
+    else:
+        raw = []
+        for line in front[match.end():].split("\n"):
+            item = re.match(r"^[ \t]*-[ \t]*(.+)$", line)
+            if item:
+                raw.append(item.group(1))
+            elif line.strip():
+                break
+    return [r.strip().strip("\"'").strip() for r in raw if r.strip().strip("\"'").strip()]
+
+
+def resolve_address(path, target, docs):
+    for candidate in (resolve(path, target), posixpath.normpath(target)):
+        if candidate and candidate in docs:
+            return candidate
+    return None
+
+
+def related_count(body):
+    section = RELATED.search(body)
+    if not section:
+        return 0
+    return sum(1 for line in section.group(1).split("\n") if re.match(r"^[-*][ \t]", line))
+
+
+def responds_targets(path, body):
+    section = RESPONDS.search(body)
+    if not section:
+        return set()
+    return {t for t in (resolve(path, link) for link in body_links(section.group(1))) if t}
+
+
 def load(root):
     docs = {}
     for path in markdown_files(root):
@@ -187,7 +235,14 @@ def load(root):
                 target = resolve(path, link)
                 if target:
                     links.append((link, target))
-        docs[path] = {"keys": keys, "sources": source_resources(front or ""), "links": links}
+        docs[path] = {
+            "keys": keys,
+            "sources": source_resources(front or ""),
+            "links": links,
+            "addresses": address_paths(front or ""),
+            "related": related_count(body),
+            "responds": responds_targets(path, body),
+        }
     return docs
 
 
@@ -243,7 +298,29 @@ def index_count_defects(root, docs, excluded):
     return found
 
 
-def measure(root, min_links, today):
+def addresses_defects(docs, excluded):
+    found, addressing = [], {}
+    for path, doc in docs.items():
+        if not is_concept(path, excluded):
+            continue
+        for target in doc["addresses"]:
+            resolved = resolve_address(path, target, docs)
+            if resolved:
+                addressing.setdefault(resolved, set()).add(path)
+            else:
+                found.append(("addresses-unresolved", path, "addresses %s does not resolve" % target))
+    for path, doc in sorted(docs.items()):
+        if not is_concept(path, excluded) or doc["keys"].get("type") != "Problem":
+            continue
+        listed, addressed = doc["responds"], addressing.get(path, set())
+        for missing in sorted(addressed - listed):
+            found.append(("addresses-unlisted", path, '%s addresses it but is not listed under "What responds to it"' % missing))
+        for extra in sorted(listed - addressed):
+            found.append(("addresses-unaddressed", path, 'lists %s under "What responds to it" but that doc does not address it' % extra))
+    return found
+
+
+def measure(root, today):
     docs = load(root)
     excluded = schema_files(root, docs)
     out = []
@@ -259,14 +336,12 @@ def measure(root, min_links, today):
             out.append(("unreachable-doc", path, "no index.md reaches it by following links"))
 
     topics = sorted({topic_of(p) for p in docs if topic_of(p)})
-    cross = {}
     connected = set()
     for path, doc in docs.items():
         mine = topic_of(path)
         if not mine:
             continue
         targets = {t for _, t in doc["links"] if t in docs and topic_of(t) and topic_of(t) != mine}
-        cross[path] = len(targets)
         for target in targets:
             connected.add(mine)
             connected.add(topic_of(target))
@@ -274,10 +349,11 @@ def measure(root, min_links, today):
     for topic in islands:
         out.append(("island-topic", topic, "no link in or out to another topic"))
 
-    for path in docs:
-        topic = topic_of(path)
-        if is_concept(path, excluded) and topic and topic not in islands and cross.get(path, 0) < min_links:
-            out.append(("thin-doc", path, "%d cross-topic link(s), fewer than %d" % (cross.get(path, 0), min_links)))
+    for path, doc in docs.items():
+        if is_concept(path, excluded) and doc["related"] > RELATED_MAX:
+            out.append(("related-overflow", path, "%d Related entries, more than %d" % (doc["related"], RELATED_MAX)))
+
+    out.extend(addresses_defects(docs, excluded))
 
     cited = set()
     for path, doc in docs.items():
@@ -318,7 +394,7 @@ def topic_label(path):
     return path.split("/", 1)[0] if "/" in path else "(root)"
 
 
-def group_by_topic(defects, min_links, cap=EXAMPLES):
+def group_by_topic(defects, cap=EXAMPLES):
     groups, rest = {}, []
     for defect in defects:
         if defect[0] in GROUPED:
@@ -327,8 +403,8 @@ def group_by_topic(defects, min_links, cap=EXAMPLES):
             rest.append(defect)
     for (kind, topic), paths in sorted(groups.items()):
         paths = sorted(paths)
-        if kind == "thin-doc":
-            detail = "%d doc(s) with fewer than %d cross-topic link(s)" % (len(paths), min_links)
+        if kind == "related-overflow":
+            detail = "%d doc(s) have more than %d Related entries" % (len(paths), RELATED_MAX)
         else:
             detail = "%d doc(s) cite a references/ file without linking it" % len(paths)
         rest.append((kind, topic, "%s; e.g. %s" % (detail, ", ".join(paths[:cap]))))

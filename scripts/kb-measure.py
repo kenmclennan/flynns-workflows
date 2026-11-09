@@ -26,17 +26,12 @@ def main():
         sys.stderr.write("schedule_state is missing or is not a commit sha; nothing to measure\n")
         sys.exit(1)
     url = kb_audit.require_config("knowledgebase-url")
-    try:
-        min_links = int(kb_audit.require_config("min-cross-topic-links"))
-    except ValueError:
-        sys.stderr.write("config key min-cross-topic-links must be a whole number\n")
-        sys.exit(1)
 
     try:
         kb_audit.ensure_clone(url)
         root = kb_audit.export_snapshot(sha)
-        defects = kb_audit.measure(root, min_links, today())
-        shown = defects if os.environ.get("KB_AUDIT_PER_FILE") else kb_audit.group_by_topic(defects, min_links)
+        defects = kb_audit.measure(root, today())
+        shown = defects if os.environ.get("KB_AUDIT_PER_FILE") else kb_audit.group_by_topic(defects)
         tools = not os.environ.get("KB_AUDIT_SKIP_TOOLS")
         prettier, lint = kb_audit.tool_counts(root) if tools else ({}, {})
         previous = kb_audit_state.read_sha()
