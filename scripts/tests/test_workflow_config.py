@@ -32,7 +32,7 @@ STAGE_KEYS = {
     "close-issues": ("close-delivered-issues", ["gh-command", "lc-command"]),
     "rank": ("kb-scout", ["threshold", "kb-repo"]),
     "harvest": ("kb-scout", ["batch-cap", "fetch-command", "checkout-path", "qmd-command"]),
-    "measure": ("kb-audit", ["knowledgebase-url", "min-cross-topic-links"]),
+    "measure": ("kb-audit", ["knowledgebase-url"]),
     "check-references": ("plugin-drift-review", ["skills-path"]),
 }
 NO_CONFIG_STAGES = ("record-decisions", "record-raised", "record-audited", "record-proposed", "check")

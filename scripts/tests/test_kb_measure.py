@@ -37,7 +37,10 @@ class MeasureTests(unittest.TestCase):
                 "unresolved-link: topic-b/one.md",
                 "unreachable-doc: topic-a/orphan.md",
                 "island-topic: island",
-                "thin-doc: topic-b",
+                "related-overflow: topic-a",
+                "addresses-unresolved: topic-a/dangling.md",
+                "addresses-unlisted: topic-a/problem-z.md",
+                "addresses-unaddressed: topic-a/problem-x.md",
                 "uncited-reference: references/uncited.md",
                 "citation-without-link: topic-b",
                 "stale: topic-a/two.md",
@@ -47,16 +50,17 @@ class MeasureTests(unittest.TestCase):
 
     def test_grouped_lines_name_example_paths(self):
         lines = self.defect_lines(self.measure("defects"))
-        thin = [l for l in lines if l.startswith("thin-doc:")]
+        overflow = [l for l in lines if l.startswith("related-overflow:")]
         cited = [l for l in lines if l.startswith("citation-without-link:")]
-        self.assertEqual(len(thin), 1)
-        self.assertIn("topic-b/two.md", thin[0])
+        self.assertEqual(len(overflow), 1)
+        self.assertIn("topic-a/related.md", overflow[0])
+        self.assertIn("1 doc(s) have more than 8 Related entries", overflow[0])
         self.assertEqual(len(cited), 1)
         self.assertIn("topic-b/one.md", cited[0])
 
     def test_per_file_flag_restores_one_line_per_file(self):
         lines = self.defect_lines(self.measure("defects", KB_AUDIT_PER_FILE="1"))
-        self.assertIn("thin-doc: topic-b/two.md - 0 cross-topic link(s), fewer than 1", lines)
+        self.assertIn("related-overflow: topic-a/related.md - 9 Related entries, more than 8", lines)
         self.assertTrue([l for l in lines if l.startswith("citation-without-link: topic-b/one.md")])
 
     def test_angle_bracket_and_nested_links_and_claude_md_are_not_false_positives(self):
@@ -80,11 +84,27 @@ class MeasureTests(unittest.TestCase):
         out = self.measure("defects", KB_AUDIT_TODAY="2025-06-01")
         self.assertFalse([l for l in self.defect_lines(out) if l.startswith("stale:")])
 
-    def test_higher_floor_reports_more_thin_docs(self):
-        out = self.measure("defects", LC_WORKFLOW_CONFIG_MIN_CROSS_TOPIC_LINKS="2")
-        thin = [l for l in self.defect_lines(out) if l.startswith("thin-doc:")]
-        docs = sum(int(l.split(" - ")[1].split(" ")[0]) for l in thin)
-        self.assertGreater(docs, 1)
+    KINDS = {
+        "unresolved-link", "unreachable-doc", "island-topic", "related-overflow", "uncited-reference",
+        "citation-without-link", "stale", "index-count", "addresses-unresolved", "addresses-unlisted",
+        "addresses-unaddressed",
+    }
+
+    def test_only_known_defect_kinds_are_reported(self):
+        for extra in ({}, {"KB_AUDIT_PER_FILE": "1"}):
+            kinds = {l.split(":")[0] for l in self.defect_lines(self.measure("defects", **extra))}
+            self.assertLessEqual(kinds, self.KINDS)
+
+    def test_addresses_mismatch_names_the_pair_in_each_direction(self):
+        lines = self.defect_lines(self.measure("defects"))
+        self.assertIn('addresses-unlisted: topic-a/problem-z.md - topic-a/response-z.md addresses it but is not listed under "What responds to it"', lines)
+        self.assertIn('addresses-unaddressed: topic-a/problem-x.md - lists topic-a/response-y.md under "What responds to it" but that doc does not address it', lines)
+        self.assertIn("addresses-unresolved: topic-a/dangling.md - addresses missing-problem.md does not resolve", lines)
+
+    def test_a_leftover_min_cross_topic_links_setting_changes_nothing(self):
+        plain = self.defect_lines(self.measure("defects"))
+        old = self.defect_lines(self.measure("defects", LC_WORKFLOW_CONFIG_MIN_CROSS_TOPIC_LINKS="2"))
+        self.assertEqual(old, plain)
 
     def test_missing_schedule_state_parks(self):
         remote = make_remote("clean")
@@ -141,17 +161,17 @@ class IndexCountTests(unittest.TestCase):
 
 class GroupingTests(unittest.TestCase):
     def test_groups_per_topic_with_five_examples(self):
-        defects = [("thin-doc", "t1/d%d.md" % i, "x") for i in range(7)] + [("thin-doc", "t2/d.md", "x"), ("stale", "t1/s.md", "x")]
-        grouped = kb_audit.group_by_topic(defects, 1)
+        defects = [("related-overflow", "t1/d%d.md" % i, "x") for i in range(7)] + [("related-overflow", "t2/d.md", "x"), ("stale", "t1/s.md", "x")]
+        grouped = kb_audit.group_by_topic(defects)
         self.assertEqual(grouped[0], ("stale", "t1/s.md", "x"))
-        self.assertEqual(grouped[1][:2], ("thin-doc", "t1"))
+        self.assertEqual(grouped[1][:2], ("related-overflow", "t1"))
         self.assertTrue(grouped[1][2].startswith("7 doc(s)"))
         self.assertEqual(grouped[1][2].split("e.g. ")[1].split(", "), ["t1/d%d.md" % i for i in range(5)])
-        self.assertEqual(grouped[2][:2], ("thin-doc", "t2"))
+        self.assertEqual(grouped[2][:2], ("related-overflow", "t2"))
         self.assertTrue(grouped[2][2].startswith("1 doc(s)"))
 
     def test_root_files_group_under_root(self):
-        grouped = kb_audit.group_by_topic([("citation-without-link", "a.md", "x")], 1)
+        grouped = kb_audit.group_by_topic([("citation-without-link", "a.md", "x")])
         self.assertEqual(grouped[0][:2], ("citation-without-link", "(root)"))
 
 

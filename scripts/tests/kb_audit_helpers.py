@@ -33,7 +33,6 @@ def run(script, data_dir, url, stdin="{}", **extra):
     env = dict(os.environ)
     env["LC_WORKFLOW_DATA_DIR"] = data_dir
     env["LC_WORKFLOW_CONFIG_KNOWLEDGEBASE_URL"] = url
-    env["LC_WORKFLOW_CONFIG_MIN_CROSS_TOPIC_LINKS"] = "1"
     env["KB_AUDIT_SKIP_TOOLS"] = "1"
     env["KB_AUDIT_TODAY"] = "2026-06-01"
     env.update(extra)
