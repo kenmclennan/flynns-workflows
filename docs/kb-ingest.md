@@ -10,14 +10,14 @@ Takes one approved source into the knowledgebase (`kenmclennan/knowledgebase`) t
 - **cold-read** is a cold reader that reads only the changed concept docs, explains each back and lists what is unclear. `clear` goes on to review; `unclear` returns to write.
 - **review** reads the diff against the plan and the knowledgebase's conventions.
 - **open-pr**, **poll-ci**, **watch-ci** and **await-merge** are the generic PR machinery. Merging is the only human gate on the normal path.
-- **escalate** takes three `broken` checks in a row, or the review rounds cap, which `review-plan`, `cold-read` and `review` share, and decides between replanning and abandoning.
+- **escalate** takes three `broken` checks in a row, or the review rounds cap, which `review-plan`, `cold-read` and `review` share, and decides between replanning, reworking the docs on the existing branch, and abandoning.
 
 ```text
 [ plan ] -> [ review-plan ] -> [ write ] -> [ check ] -> [ cold-read ] -> [ review ] -> [ open-pr ] -> [ poll-ci ] -> [ watch-ci ] -> {{ await-merge }} -> ([ completed ])
    |           |  changes -> plan     ^  broken        |  unclear -> write      |  rejected -> write
    |           |  escalate -> {{ escalate }}
    |  nothing-to-add -> {{ confirm-skip }}  (changes -> plan | rejected -> ([ abandoned ]))
-   ({{ escalate }}: reached from check broken x3, or review-plan, cold-read or review past the rounds cap -> replan | abandoned)
+   ({{ escalate }}: reached from check broken x3, or review-plan, cold-read or review past the rounds cap -> replan | rework (-> write) | abandoned)
 ```
 
 Every convention the steps follow lives in the knowledgebase's own `CLAUDE.md`. A source is already in when `references/` holds a file whose `resource:` is its URL, so the workflow keeps no state of its own.
