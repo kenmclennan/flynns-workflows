@@ -7,7 +7,7 @@ Takes one approved source into the knowledgebase (`kenmclennan/knowledgebase`) t
 - **review-plan** is an agent that reads the plan and the source against the knowledgebase's `CLAUDE.md`. `approved` goes on, `changes` returns to plan, `escalate` hands it to a human. No plan document is ever committed to the knowledgebase; the plan is quoted in the PR body instead.
 - **write** builds the approved plan on a branch, and nothing more.
 - **check** is a script stage that spends no tokens: prettier, markdownlint, relative links, required frontmatter, reachability from an `index.md`, every cited reference linked in the body, every `addresses:` path resolving, and each Problem doc's "What responds to it" list matching the docs that address it.
-- **cold-read** is a cold reader that reads only the changed concept docs, explains each back and lists what is unclear. `clear` goes on to review; `unclear` returns to write.
+- **cold-read** is a cold reader that reads only the changed concept docs and explains each back. Only what a reader cannot follow blocks: `unclear` returns to write, and a rework round settles the last round's issues first and reads only what write changed since. Everything else is a note that `clear` carries to review and `open-pr` puts in the PR body for the merge gate.
 - **review** reads the diff against the plan and the knowledgebase's conventions.
 - **open-pr**, **poll-ci**, **watch-ci** and **await-merge** are the generic PR machinery. Merging is the only human gate on the normal path.
 - **escalate** takes three `broken` checks in a row, or the review rounds cap, which `review-plan`, `cold-read` and `review` share, and decides between replanning, reworking the docs on the existing branch, and abandoning.
