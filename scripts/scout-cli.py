@@ -21,8 +21,17 @@ def cmd_queue(conn, args):
     for r in scout_state.queue(conn):
         score = "%.2f" % r["last_score"] if r["last_score"] is not None else "unscored"
         print(
-            "%s  tier %d  inbound %d  %s  %s  %s"
-            % (r["url"], r["tier"], r["inbound"], score, r["verdict"] or "undecided", r["title"])
+            "%s  tier %d  inbound %d  %s  %s  %s%s%s"
+            % (
+                r["url"],
+                r["tier"],
+                r["inbound"],
+                score,
+                r["verdict"] or "undecided",
+                r["title"],
+                "  roundup" if r["roundup"] else "",
+                "  picked" if r["picked"] else "",
+            )
         )
 
 

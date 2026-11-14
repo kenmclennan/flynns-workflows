@@ -97,6 +97,8 @@ def main():
                 "tier": r["tier"],
                 "inbound": r["inbound"],
                 "feed": r["feed"],
+                "picked": bool(r["picked"]),
+                "roundup": bool(r["roundup"]),
                 "via": [
                     {"parent": v["parent"], "parent_title": v["parent_title"], "anchor": v["anchor"], "context": v["context"]}
                     for v in vias[r["url"]]

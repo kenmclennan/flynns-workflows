@@ -5,6 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
+import scout_fetch
 import scout_state
 
 
@@ -25,6 +26,9 @@ def load_scores(stdin):
                 "summary": str(s.get("summary") or ""),
                 "kb_has": str(s.get("kb_has") or ""),
                 "author": str(s.get("author") or ""),
+                "title": str(s.get("title") or ""),
+                "roundup": bool(s.get("roundup")),
+                "follow": [scout_fetch.normalize(str(u)) for u in (s.get("follow") or [])] if s.get("roundup") else [],
             }
             for s in data
         ]
@@ -54,6 +58,8 @@ def digest(rows, kb_repo):
             if r["parents"] > 1:
                 line += " (+%d more)" % (r["parents"] - 1)
             lines.append(line)
+        if r["roundup"] and r.get("follows"):
+            lines.append("  roundup, follows: %s" % ", ".join(r["follows"]))
         lines.append("  link: %s" % r["url"])
         lines.append("  author: %s" % (r["author"] or "unknown"))
         lines.append("  tier %d, inbound trusted links %d, score %.2f" % (r["tier"], r["inbound"], r["last_score"]))
@@ -81,18 +87,24 @@ def main():
             scored = set()
             for s in scores:
                 result = scout_state.record_scores(
-                    conn, s["url"], s["relevance"], s["novelty"], s["summary"], s["kb_has"], s["author"], now
+                    conn, s["url"], s["relevance"], s["novelty"], s["summary"], s["kb_has"], s["author"], now,
+                    title=s["title"], roundup=s["roundup"],
                 )
                 if result is None:
                     sys.stderr.write("scores names %s, which is not a known candidate; skipped\n" % s["url"])
                 else:
                     scored.add(s["url"])
+                    for skipped in scout_state.record_picks(conn, s["url"], s["follow"]):
+                        sys.stderr.write(
+                            "follow names %s, which %s does not link; skipped\n" % (skipped, s["url"])
+                        )
             for row in scout_state.rescorable(conn):
                 scout_state.rescore(conn, row["url"], now)
         survivors = scout_state.survivors_undecided(conn, threshold)
         for r in survivors:
             r["via"] = scout_state.via(conn, r["url"], 1)
             r["parents"] = scout_state.parent_count(conn, r["url"])
+            r["follows"] = scout_state.picked_children(conn, r["url"]) if r["roundup"] else []
     finally:
         conn.close()
 

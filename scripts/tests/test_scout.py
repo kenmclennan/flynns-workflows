@@ -226,6 +226,63 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 2)
 
 
+class OrderingTests(unittest.TestCase):
+    def setUp(self):
+        self.conn = sqlite3.connect(":memory:")
+        self.conn.row_factory = sqlite3.Row
+        self.addCleanup(self.conn.close)
+        os.environ["LC_WORKFLOW_DATA_DIR"] = tempfile.gettempdir()
+        self.addCleanup(os.environ.pop, "LC_WORKFLOW_DATA_DIR")
+        scout_state.migrate(self.conn)
+
+    def cand(self, url, tier=2, score=None, parent=None, picked=False, inbound=None):
+        scout_state.record_candidate(self.conn, url, "", "f", tier, NOW)
+        if score is not None:
+            self.conn.execute("UPDATE seen SET last_score = ?, scored_at = ? WHERE url = ?", (score, NOW, url))
+        if picked:
+            self.conn.execute("UPDATE seen SET picked = 1 WHERE url = ?", (url,))
+        if inbound:
+            self.conn.execute("UPDATE seen SET inbound = ? WHERE url = ?", (inbound, url))
+        for p in ([parent] if isinstance(parent, str) else parent or []):
+            scout_state.record_link(self.conn, url, p, "", "", NOW)
+
+    def order(self, limit=20):
+        return [r["url"] for r in scout_state.candidates_pending(self.conn, limit)]
+
+    def build(self):
+        self.cand("P1", tier=1, score=8)
+        self.cand("P2", tier=1, score=6.6)
+        self.cand("a", parent="P1", picked=True)
+        self.cand("b", parent="P1")
+        self.cand("c", parent="P2")
+        self.cand("d", inbound=5)
+        self.cand("t", tier=1)
+
+    def test_tier_one_then_picked_then_parent_score_then_legacy(self):
+        self.build()
+        self.assertEqual(self.order(), ["t", "a", "b", "c", "d"])
+        self.assertEqual(len(self.order(2)), 2)
+
+    def test_a_link_from_two_parents_ranks_by_the_higher_score(self):
+        self.build()
+        self.cand("both", parent=["P2", "P1"])
+        self.cand("b2", parent="P1")
+        self.assertEqual(self.order()[1:4], ["a", "b", "b2"])
+        self.assertLess(self.order().index("both"), self.order().index("c"))
+
+    def test_picked_beats_parent_score(self):
+        self.build()
+        self.cand("e", parent="P2", picked=True)
+        order = self.order()
+        self.assertLess(order.index("e"), order.index("b"))
+
+    def test_an_unscored_parent_does_not_lend_rank(self):
+        self.cand("U", tier=1)
+        self.cand("x", parent="U")
+        self.cand("y", inbound=3)
+        self.assertEqual(self.order(), ["U", "y", "x"])
+
+
 class FetchTests(unittest.TestCase):
     def test_parses_atom_and_rss(self):
         with open(os.path.join(HERE, "recordings", "scout", "https_martinfowler_com_feed_atom.txt")) as handle:
@@ -481,6 +538,38 @@ class StageTests(Base):
         self.assertEqual(self.rows("SELECT COUNT(*) FROM links WHERE url = 'https://stratechery.com'"), [(0,)])
         self.assertEqual(self.rows("SELECT COUNT(*) FROM links WHERE url = 'https://real.example/article'"), [(1,)])
 
+    def test_rank_records_picks_roundup_and_title_and_skips_unlinked_follows(self):
+        self.harvest(self.guard()["state"])
+        score = {
+            "url": GUARDRAILS, "relevance": 9, "novelty": 8, "title": "A fresh title", "roundup": True,
+            "follow": ["HTTPS://Example.org/third/", "https://nowhere.example/x"],
+        }
+        titled = {"url": THIRD, "relevance": 5, "novelty": 5, "title": "Third page"}
+        stdin = json.dumps({"item_artifacts": {"scores": json.dumps([score, titled])}})
+        proc = run("rank.py", self.data, stdin)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("https://nowhere.example/x", proc.stderr)
+        self.assertNotIn(THIRD + " ", proc.stderr)
+        self.assertEqual(self.rows("SELECT picked FROM seen WHERE url = '%s'" % THIRD), [(1,)])
+        self.assertEqual(self.rows("SELECT roundup, title FROM seen WHERE url = '%s'" % GUARDRAILS), [(1, "Agent guardrails")])
+        self.assertEqual(self.rows("SELECT roundup, title FROM seen WHERE url = '%s'" % THIRD), [(0, "Third page")])
+        digest = json.loads(proc.stdout)["artifacts"]["candidates-digest"]
+        self.assertIn("  roundup, follows: %s" % THIRD, digest)
+
+    def test_rank_ignores_follow_when_not_a_roundup_and_all_valid_or_none_valid(self):
+        self.harvest(self.guard()["state"])
+        stdin = json.dumps({"item_artifacts": {"scores": json.dumps([
+            {"url": GUARDRAILS, "relevance": 9, "novelty": 8, "roundup": False, "follow": [THIRD]}
+        ])}})
+        self.assertEqual(run("rank.py", self.data, stdin).returncode, 0)
+        self.assertEqual(self.rows("SELECT picked FROM seen WHERE url = '%s'" % THIRD), [(0,)])
+        stdin = json.dumps({"item_artifacts": {"scores": json.dumps([
+            {"url": GUARDRAILS, "relevance": 9, "novelty": 8, "roundup": True, "follow": ["https://a.example/1", "https://a.example/2"]}
+        ])}})
+        proc = run("rank.py", self.data, stdin)
+        self.assertEqual(proc.stderr.count("skipped"), 2)
+        self.assertEqual(self.rows("SELECT picked FROM seen WHERE url = '%s'" % THIRD), [(0,)])
+
     def test_digest_shows_via_for_tier_two_and_nothing_extra_for_tier_one(self):
         state = json.loads(self.guard()["state"])
         state["entries"].append(
@@ -496,6 +585,7 @@ class StageTests(Base):
         self.assertIn("(+1 more)", third[1])
         tier_one = [b for b in block if "link: %s" % GUARDRAILS in b][0]
         self.assertNotIn("  via ", tier_one)
+        self.assertNotIn("roundup, follows", tier_one)
 
     def test_digest_first_line_is_the_anchor_without_a_title_and_legacy_rows_print_as_before(self):
         self.harvest(self.guard()["state"])
@@ -508,6 +598,11 @@ class StageTests(Base):
         legacy_block = [b for b in block if legacy in b][0].split("\n")
         self.assertEqual(legacy_block[0], legacy)
         self.assertNotIn("  via ", "\n".join(legacy_block))
+
+    def test_guard_passes_for_picked_unscored_rows_alone(self):
+        self.harvest(self.guard()["state"])
+        self.write("UPDATE seen SET picked = 1 WHERE url = '%s'" % THIRD)
+        self.assertEqual(self.guard()["outcome"], "pass")
 
     def test_rank_survivors_and_none(self):
         self.harvest(self.guard()["state"])

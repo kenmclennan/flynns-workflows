@@ -123,6 +123,12 @@ def bump_inbound(conn, url):
     conn.execute("UPDATE seen SET inbound = inbound + 1 WHERE url = ?", (url,))
 
 
+PARENT_SCORE = (
+    "COALESCE((SELECT MAX(p.last_score) FROM links l JOIN seen p ON p.url = l.parent "
+    "WHERE l.url = s.url AND p.scored_at IS NOT NULL AND p.last_score IS NOT NULL), -1)"
+)
+
+
 def record_link(conn, url, parent, anchor, context, now):
     conn.execute(
         "INSERT OR IGNORE INTO links (url, parent, anchor, context, first_seen) VALUES (?, ?, ?, ?, ?)",
@@ -147,6 +153,28 @@ def parent_count(conn, url):
     return conn.execute("SELECT COUNT(*) FROM links WHERE url = ?", (url,)).fetchone()[0]
 
 
+def picked_children(conn, parent):
+    return [
+        r[0]
+        for r in conn.execute(
+            "SELECT s.url FROM links l JOIN seen s ON s.url = l.url "
+            "WHERE l.parent = ? AND s.picked = 1 ORDER BY s.url ASC",
+            (parent,),
+        ).fetchall()
+    ]
+
+
+def record_picks(conn, parent, urls):
+    skipped = []
+    for url in urls:
+        found = conn.execute("SELECT 1 FROM links WHERE url = ? AND parent = ?", (url, parent)).fetchone()
+        if found is None:
+            skipped.append(url)
+        else:
+            conn.execute("UPDATE seen SET picked = 1 WHERE url = ?", (url,))
+    return skipped
+
+
 def drop_noise(conn, is_noise):
     rows = conn.execute(
         "SELECT s.url FROM seen s LEFT JOIN decisions d ON d.url = s.url "
@@ -164,7 +192,10 @@ def candidates_pending(conn, limit):
         conn.execute(
             "SELECT s.* FROM seen s LEFT JOIN decisions d ON d.url = s.url "
             "WHERE s.scored_at IS NULL AND (d.verdict IS NULL OR d.verdict = 'defer') "
-            "ORDER BY s.tier ASC, s.inbound DESC, s.first_seen ASC, s.url ASC LIMIT ?",
+            "ORDER BY s.tier ASC, "
+            "CASE WHEN s.tier = 1 THEN 0 ELSE s.picked END DESC, "
+            "CASE WHEN s.tier = 1 THEN 0 ELSE " + PARENT_SCORE + " END DESC, "
+            "s.inbound DESC, s.first_seen ASC, s.url ASC LIMIT ?",
             (int(limit),),
         )
     )
@@ -182,15 +213,26 @@ def combined_score(relevance, novelty, tier, inbound):
     return round(0.6 * relevance + 0.4 * novelty + bonus, 2)
 
 
-def record_scores(conn, url, relevance, novelty, summary, kb_has, author, now):
+def record_scores(conn, url, relevance, novelty, summary, kb_has, author, now, title="", roundup=False):
     row = seen_row(conn, url)
     if row is None:
         return None
     score = combined_score(relevance, novelty, row["tier"], row["inbound"])
     conn.execute(
         "UPDATE seen SET relevance = ?, novelty = ?, summary = ?, kb_has = ?, author = ?, last_score = ?, "
-        "scored_at = ?, scored_inbound = inbound WHERE url = ?",
-        (relevance, novelty, summary or row["summary"], kb_has or row["kb_has"], author or row["author"], score, now, url),
+        "scored_at = ?, scored_inbound = inbound, roundup = ?, title = ? WHERE url = ?",
+        (
+            relevance,
+            novelty,
+            summary or row["summary"],
+            kb_has or row["kb_has"],
+            author or row["author"],
+            score,
+            now,
+            1 if roundup else 0,
+            row["title"] or title,
+            url,
+        ),
     )
     return score
 
