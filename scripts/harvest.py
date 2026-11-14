@@ -57,6 +57,7 @@ def main():
     try:
         scout_state.migrate(conn)
         with conn:
+            scout_state.drop_noise(conn, scout_fetch.is_noise)
             for entry in entries:
                 url = entry["url"]
                 if url in in_kb or scout_state.is_decided(conn, url):
@@ -68,16 +69,19 @@ def main():
                 page = scout_fetch.fetch(url, fetch_command)
                 if page is None:
                     continue
-                for link in scout_fetch.extract_links(page, url):
+                for found in scout_fetch.extract_link_context(page, url):
+                    link = found["url"]
                     if link in in_kb or scout_state.is_decided(conn, link):
                         continue
                     if scout_state.seen_row(conn, link):
                         scout_state.bump_inbound(conn, link)
                     else:
                         scout_state.record_candidate(conn, link, "", entry["feed"], 2, now)
+                    scout_state.record_link(conn, link, url, found["anchor"], found["context"], now)
             for feed, mark in marks.items():
                 scout_state.advance_mark(conn, feed, mark)
         pending = scout_state.candidates_pending(conn, batch_cap)
+        vias = {r["url"]: scout_state.via(conn, r["url"], 3) for r in pending}
     finally:
         conn.close()
 
@@ -86,7 +90,20 @@ def main():
         "qmd": qmd,
         "batch_cap": batch_cap,
         "candidates": [
-            {"url": r["url"], "title": r["title"], "author": r["author"], "tier": r["tier"], "inbound": r["inbound"], "feed": r["feed"]}
+            {
+                "url": r["url"],
+                "title": r["title"],
+                "author": r["author"],
+                "tier": r["tier"],
+                "inbound": r["inbound"],
+                "feed": r["feed"],
+                "picked": bool(r["picked"]),
+                "roundup": bool(r["roundup"]),
+                "via": [
+                    {"parent": v["parent"], "parent_title": v["parent_title"], "anchor": v["anchor"], "context": v["context"]}
+                    for v in vias[r["url"]]
+                ],
+            }
             for r in pending
         ],
     }

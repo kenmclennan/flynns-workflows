@@ -81,6 +81,11 @@ class Base(unittest.TestCase):
         self.addCleanup(conn.close)
         return conn
 
+    def write(self, sql, params=()):
+        conn = self.db()
+        conn.execute(sql, params)
+        conn.commit()
+
     def rows(self, sql):
         return [tuple(r) for r in self.db().execute(sql).fetchall()]
 
@@ -169,6 +174,115 @@ class StateTests(unittest.TestCase):
             scout_state.record_decision(self.conn, "p", "maybe", "", "", NOW)
 
 
+V1_SCHEMA = [
+    "CREATE TABLE feeds (url TEXT PRIMARY KEY, kind TEXT NOT NULL, tier INTEGER NOT NULL, areas TEXT NOT NULL DEFAULT '', "
+    "enabled INTEGER NOT NULL DEFAULT 1, high_water TEXT NOT NULL DEFAULT '', added TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '')",
+    "CREATE TABLE seen (url TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', feed TEXT NOT NULL, tier INTEGER NOT NULL, "
+    "inbound INTEGER NOT NULL DEFAULT 0, first_seen TEXT NOT NULL, last_score REAL, scored_at TEXT, "
+    "relevance REAL, novelty REAL, summary TEXT NOT NULL DEFAULT '', kb_has TEXT NOT NULL DEFAULT '', "
+    "author TEXT NOT NULL DEFAULT '', scored_inbound INTEGER NOT NULL DEFAULT 0)",
+    "CREATE TABLE decisions (url TEXT PRIMARY KEY, verdict TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', "
+    "decided_at TEXT NOT NULL, item_id TEXT NOT NULL DEFAULT '')",
+]
+
+
+class MigrationTests(unittest.TestCase):
+    def v1(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        self.addCleanup(conn.close)
+        for sql in V1_SCHEMA:
+            conn.execute(sql)
+        conn.execute("INSERT INTO seen (url, feed, tier, inbound, first_seen) VALUES ('t1', 'f', 1, 0, ?)", (NOW,))
+        conn.execute(
+            "INSERT INTO seen (url, feed, tier, inbound, first_seen, last_score, scored_at) VALUES ('s2', 'f', 2, 1, ?, 7, ?)",
+            (NOW, NOW),
+        )
+        conn.execute("INSERT INTO seen (url, feed, tier, inbound, first_seen) VALUES ('u2', 'f', 2, 1, ?)", (NOW,))
+        conn.execute("INSERT INTO decisions (url, verdict, decided_at) VALUES ('s2', 'accept', ?)", (NOW,))
+        conn.execute("PRAGMA user_version = 1")
+        conn.commit()
+        return conn
+
+    def test_migrate_takes_a_version_one_database_to_two_keeping_every_row(self):
+        conn = self.v1()
+        scout_state.migrate(conn)
+        self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 2)
+        rows = conn.execute("SELECT url, roundup, picked FROM seen ORDER BY url").fetchall()
+        self.assertEqual([tuple(r) for r in rows], [("s2", 0, 0), ("t1", 0, 0), ("u2", 0, 0)])
+        names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'index'").fetchall()}
+        self.assertIn("idx_links_parent", names)
+        self.assertIn("sqlite_autoindex_links_1", names)
+        self.assertEqual(conn.execute("SELECT verdict FROM decisions WHERE url = 's2'").fetchone()[0], "accept")
+        self.assertEqual([r["url"] for r in scout_state.candidates_pending(conn, 10)], ["t1", "u2"])
+
+    def test_migrate_is_rerunnable_after_a_half_migration(self):
+        conn = self.v1()
+        conn.execute("ALTER TABLE seen ADD COLUMN roundup INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+        scout_state.migrate(conn)
+        columns = {r[1] for r in conn.execute("PRAGMA table_info(seen)").fetchall()}
+        self.assertTrue({"roundup", "picked"} <= columns)
+        self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 2)
+
+
+class OrderingTests(unittest.TestCase):
+    def setUp(self):
+        self.conn = sqlite3.connect(":memory:")
+        self.conn.row_factory = sqlite3.Row
+        self.addCleanup(self.conn.close)
+        os.environ["LC_WORKFLOW_DATA_DIR"] = tempfile.gettempdir()
+        self.addCleanup(os.environ.pop, "LC_WORKFLOW_DATA_DIR")
+        scout_state.migrate(self.conn)
+
+    def cand(self, url, tier=2, score=None, parent=None, picked=False, inbound=None):
+        scout_state.record_candidate(self.conn, url, "", "f", tier, NOW)
+        if score is not None:
+            self.conn.execute("UPDATE seen SET last_score = ?, scored_at = ? WHERE url = ?", (score, NOW, url))
+        if picked:
+            self.conn.execute("UPDATE seen SET picked = 1 WHERE url = ?", (url,))
+        if inbound:
+            self.conn.execute("UPDATE seen SET inbound = ? WHERE url = ?", (inbound, url))
+        for p in ([parent] if isinstance(parent, str) else parent or []):
+            scout_state.record_link(self.conn, url, p, "", "", NOW)
+
+    def order(self, limit=20):
+        return [r["url"] for r in scout_state.candidates_pending(self.conn, limit)]
+
+    def build(self):
+        self.cand("P1", tier=1, score=8)
+        self.cand("P2", tier=1, score=6.6)
+        self.cand("a", parent="P1", picked=True)
+        self.cand("b", parent="P1")
+        self.cand("c", parent="P2")
+        self.cand("d", inbound=5)
+        self.cand("t", tier=1)
+
+    def test_tier_one_then_picked_then_parent_score_then_legacy(self):
+        self.build()
+        self.assertEqual(self.order(), ["t", "a", "b", "c", "d"])
+        self.assertEqual(len(self.order(2)), 2)
+
+    def test_a_link_from_two_parents_ranks_by_the_higher_score(self):
+        self.build()
+        self.cand("both", parent=["P2", "P1"])
+        self.cand("b2", parent="P1")
+        self.assertEqual(self.order()[1:4], ["a", "b", "b2"])
+        self.assertLess(self.order().index("both"), self.order().index("c"))
+
+    def test_picked_beats_parent_score(self):
+        self.build()
+        self.cand("e", parent="P2", picked=True)
+        order = self.order()
+        self.assertLess(order.index("e"), order.index("b"))
+
+    def test_an_unscored_parent_does_not_lend_rank(self):
+        self.cand("U", tier=1)
+        self.cand("x", parent="U")
+        self.cand("y", inbound=3)
+        self.assertEqual(self.order(), ["U", "y", "x"])
+
+
 class FetchTests(unittest.TestCase):
     def test_parses_atom_and_rss(self):
         with open(os.path.join(HERE, "recordings", "scout", "https_martinfowler_com_feed_atom.txt")) as handle:
@@ -206,7 +320,6 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(
             links,
             [
-                "https://x.com/GergelyOrosz/status/2108863325756961274",
                 "https://bjsm.bmj.com/content/60/9/677",
                 "https://anitab.org/press-release",
                 "https://copyconstruct.medium.com/how-to-effectively-debug-when-you-no-longer-understand-the-code-bd3dcb2c5f7b",
@@ -218,7 +331,7 @@ class FetchTests(unittest.TestCase):
             "https_newsletter_kentbeck_com_p_decompose_run_on_tests.txt",
             "https://newsletter.kentbeck.com/p/decompose-run-on-tests",
         )
-        self.assertEqual(links, ["http://grammar.ccc.commnet.edu/grammar/runons.htm", "https://testdesiderata.com"])
+        self.assertEqual(links, ["http://grammar.ccc.commnet.edu/grammar/runons.htm"])
 
     def test_extract_links_excludes_assets_and_amazon_inside_a_body(self):
         page = (
@@ -243,6 +356,60 @@ class FetchTests(unittest.TestCase):
     def test_extract_links_still_skips_nav_inside_a_body(self):
         page = '<div class="body markup"><nav><a href="https://nav.example/a">n</a></nav><a href="https://in.example/b">b</a></div>'
         self.assertEqual(scout_fetch.extract_links(page, GUARDRAILS), ["https://in.example/b"])
+
+    def test_extract_link_context_on_the_fragments_recording(self):
+        with open(os.path.join(HERE, "recordings", "scout", "https_martinfowler_com_fragments_2026_10_21_html.txt")) as handle:
+            found = scout_fetch.extract_link_context(handle.read(), "https://martinfowler.com/fragments/2026-10-21.html")
+        self.assertEqual(
+            [(f["url"], f["anchor"], f["context"]) for f in found],
+            [
+                ("https://bjsm.bmj.com/content/60/9/677", "a study", "See a post and a study."),
+                ("https://anitab.org/press-release", "press", "press debugging book"),
+                (
+                    "https://copyconstruct.medium.com/how-to-effectively-debug-when-you-no-longer-understand-the-code-bd3dcb2c5f7b",
+                    "debugging",
+                    "press debugging book",
+                ),
+            ],
+        )
+
+    def test_extract_link_context_on_the_kent_beck_recording(self):
+        with open(os.path.join(HERE, "recordings", "scout", "https_newsletter_kentbeck_com_p_decompose_run_on_tests.txt")) as handle:
+            found = scout_fetch.extract_link_context(handle.read(), "https://newsletter.kentbeck.com/p/decompose-run-on-tests")
+        self.assertEqual([(f["url"], f["anchor"]) for f in found], [("http://grammar.ccc.commnet.edu/grammar/runons.htm", "run-ons")])
+
+    def test_noise_hosts_and_bare_homepages_are_dropped_on_a_dot_boundary(self):
+        page = (
+            '<div class="paperBody">'
+            + "".join(
+                '<a href="%s">l</a>' % u
+                for u in (
+                    "https://www.youtube.com/watch?v=1",
+                    "https://en.wikipedia.org/wiki/X",
+                    "https://www.linkedin.com/in/a",
+                    "https://x.com/a/status/1",
+                    "https://twitter.com/a",
+                    "https://stratechery.com",
+                    "https://cucumber.io/?ref=x",
+                    "https://page.example/x",
+                    "https://notyoutube.com/a",
+                    "https://x.com.example/a",
+                )
+            )
+            + "</div>"
+        )
+        self.assertEqual(
+            scout_fetch.extract_links(page, GUARDRAILS),
+            ["https://page.example/x", "https://notyoutube.com/a", "https://x.com.example/a"],
+        )
+
+    def test_long_blocks_yield_a_window_before_the_anchor(self):
+        lead = "word " * 80
+        page = '<div class="paperBody"><p>%s<a href="https://page.example/x">here</a> %s</p></div>' % (lead, "tail " * 80)
+        found = scout_fetch.extract_link_context(page, GUARDRAILS)[0]
+        self.assertEqual(len(found["context"]), 300)
+        self.assertIn("here", found["context"])
+        self.assertTrue(found["context"].startswith("word"))
 
     def test_first_run_is_capped_and_later_runs_use_the_mark(self):
         entries = [{"url": "https://x.test/%d" % i, "published": "2026-01-%02dT00:00:00Z" % i} for i in range(1, 10)]
@@ -323,6 +490,119 @@ class StageTests(Base):
         out = self.guard()
         self.assertEqual(out["outcome"], "pass")
         self.assertIn("3 waiting", out["title"])
+
+    def test_harvest_records_provenance_once_and_a_second_parent_adds_a_row(self):
+        state = json.loads(self.guard()["state"])
+        self.harvest(json.dumps(state))
+        rows = self.rows("SELECT parent, anchor, context FROM links WHERE url = '%s'" % THIRD)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], GUARDRAILS)
+        self.assertTrue(rows[0][1])
+        self.assertIn(rows[0][1], rows[0][2])
+        before = self.rows("SELECT COUNT(*) FROM links")
+        self.harvest(json.dumps(state))
+        self.assertEqual(self.rows("SELECT COUNT(*) FROM links"), before)
+        state["entries"].append(
+            {"feed": "https://tidyfirst.substack.com/feed", "url": BECK_POST, "title": "C", "author": "", "published": ""}
+        )
+        self.harvest(json.dumps(state))
+        self.assertEqual(self.rows("SELECT COUNT(*) FROM links WHERE url = '%s'" % THIRD), [(2,)])
+        self.assertEqual(self.rows("SELECT inbound FROM seen WHERE url = '%s'" % THIRD), [(2,)])
+
+    def test_harvest_sweeps_legacy_noise_and_nothing_else(self):
+        self.guard()
+        conn = self.db()
+        for url, scored in (
+            ("https://www.youtube.com/watch?v=1", False),
+            ("https://stratechery.com", False),
+            ("https://real.example/article", False),
+            ("https://www.youtube.com/watch?v=2", True),
+            ("https://www.youtube.com/watch?v=3", False),
+        ):
+            conn.execute(
+                "INSERT INTO seen (url, feed, tier, inbound, first_seen, scored_at) VALUES (?, 'f', 2, 1, ?, ?)",
+                (url, NOW, NOW if scored else None),
+            )
+            conn.execute("INSERT INTO links (url, parent, first_seen) VALUES (?, 'p', ?)", (url, NOW))
+        conn.execute(
+            "INSERT INTO decisions (url, verdict, decided_at) VALUES ('https://www.youtube.com/watch?v=3', 'defer', ?)", (NOW,)
+        )
+        conn.commit()
+        self.harvest(self.guard()["state"])
+        remaining = {r[0] for r in self.rows("SELECT url FROM seen WHERE tier = 2")}
+        self.assertTrue(
+            {"https://real.example/article", "https://www.youtube.com/watch?v=2", "https://www.youtube.com/watch?v=3"} <= remaining
+        )
+        self.assertNotIn("https://stratechery.com", remaining)
+        self.assertNotIn("https://www.youtube.com/watch?v=1", remaining)
+        self.assertEqual(self.rows("SELECT COUNT(*) FROM links WHERE url = 'https://stratechery.com'"), [(0,)])
+        self.assertEqual(self.rows("SELECT COUNT(*) FROM links WHERE url = 'https://real.example/article'"), [(1,)])
+
+    def test_rank_records_picks_roundup_and_title_and_skips_unlinked_follows(self):
+        self.harvest(self.guard()["state"])
+        score = {
+            "url": GUARDRAILS, "relevance": 9, "novelty": 8, "title": "A fresh title", "roundup": True,
+            "follow": ["HTTPS://Example.org/third/", "https://nowhere.example/x"],
+        }
+        titled = {"url": THIRD, "relevance": 5, "novelty": 5, "title": "Third page"}
+        stdin = json.dumps({"item_artifacts": {"scores": json.dumps([score, titled])}})
+        proc = run("rank.py", self.data, stdin)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("https://nowhere.example/x", proc.stderr)
+        self.assertNotIn(THIRD + " ", proc.stderr)
+        self.assertEqual(self.rows("SELECT picked FROM seen WHERE url = '%s'" % THIRD), [(1,)])
+        self.assertEqual(self.rows("SELECT roundup, title FROM seen WHERE url = '%s'" % GUARDRAILS), [(1, "Agent guardrails")])
+        self.assertEqual(self.rows("SELECT roundup, title FROM seen WHERE url = '%s'" % THIRD), [(0, "Third page")])
+        digest = json.loads(proc.stdout)["artifacts"]["candidates-digest"]
+        self.assertIn("  roundup, follows: %s" % THIRD, digest)
+
+    def test_rank_ignores_follow_when_not_a_roundup_and_all_valid_or_none_valid(self):
+        self.harvest(self.guard()["state"])
+        stdin = json.dumps({"item_artifacts": {"scores": json.dumps([
+            {"url": GUARDRAILS, "relevance": 9, "novelty": 8, "roundup": False, "follow": [THIRD]}
+        ])}})
+        self.assertEqual(run("rank.py", self.data, stdin).returncode, 0)
+        self.assertEqual(self.rows("SELECT picked FROM seen WHERE url = '%s'" % THIRD), [(0,)])
+        stdin = json.dumps({"item_artifacts": {"scores": json.dumps([
+            {"url": GUARDRAILS, "relevance": 9, "novelty": 8, "roundup": True, "follow": ["https://a.example/1", "https://a.example/2"]}
+        ])}})
+        proc = run("rank.py", self.data, stdin)
+        self.assertEqual(proc.stderr.count("skipped"), 2)
+        self.assertEqual(self.rows("SELECT picked FROM seen WHERE url = '%s'" % THIRD), [(0,)])
+
+    def test_digest_shows_via_for_tier_two_and_nothing_extra_for_tier_one(self):
+        state = json.loads(self.guard()["state"])
+        state["entries"].append(
+            {"feed": "https://tidyfirst.substack.com/feed", "url": BECK_POST, "title": "C", "author": "", "published": ""}
+        )
+        self.harvest(json.dumps(state))
+        self.write("UPDATE seen SET title = 'Guardrails post' WHERE url = '%s'" % GUARDRAILS)
+        scores = [{"url": u, "relevance": 9, "novelty": 8} for u in (GUARDRAILS, THIRD)]
+        digest = self.rank(scores)["artifacts"]["candidates-digest"]
+        block = digest.split("- ")[1:]
+        third = [b for b in block if THIRD in b][0].split("\n")
+        self.assertTrue(third[1].startswith("  via "), third)
+        self.assertIn("(+1 more)", third[1])
+        tier_one = [b for b in block if "link: %s" % GUARDRAILS in b][0]
+        self.assertNotIn("  via ", tier_one)
+        self.assertNotIn("roundup, follows", tier_one)
+
+    def test_digest_first_line_is_the_anchor_without_a_title_and_legacy_rows_print_as_before(self):
+        self.harvest(self.guard()["state"])
+        legacy = "https://legacy.example/a"
+        self.write("INSERT INTO seen (url, feed, tier, inbound, first_seen) VALUES (?, 'f', 2, 1, ?)", (legacy, NOW))
+        anchor = self.rows("SELECT anchor FROM links WHERE url = '%s'" % THIRD)[0][0]
+        digest = self.rank([{"url": u, "relevance": 9, "novelty": 8} for u in (THIRD, legacy)])["artifacts"]["candidates-digest"]
+        block = digest.split("- ")[1:]
+        self.assertEqual([b for b in block if THIRD in b][0].split("\n")[0], anchor)
+        legacy_block = [b for b in block if legacy in b][0].split("\n")
+        self.assertEqual(legacy_block[0], legacy)
+        self.assertNotIn("  via ", "\n".join(legacy_block))
+
+    def test_guard_passes_for_picked_unscored_rows_alone(self):
+        self.harvest(self.guard()["state"])
+        self.write("UPDATE seen SET picked = 1 WHERE url = '%s'" % THIRD)
+        self.assertEqual(self.guard()["outcome"], "pass")
 
     def test_rank_survivors_and_none(self):
         self.harvest(self.guard()["state"])

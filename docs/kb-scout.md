@@ -3,17 +3,18 @@
 Watches trusted feeds for material worth adding to the knowledgebase (`kenmclennan/knowledgebase`), follows links one hop out, scores what it finds, and raises one inbox item listing the candidates above a threshold. It mirrors nothing and writes nothing to the knowledgebase.
 
 - **Guard** (`scripts/feeds-moved.py`, suggested `0 9 * * 2,5`) fetches every enabled feed and passes when any has entries newer than its high-water mark, or candidates or undecided survivors are waiting. Otherwise nothing is filed and nothing is spent.
-- **harvest** is a script stage. New entries become tier 1 candidates; their outbound links become tier 2 candidates with an inbound-link count. Only links in the article body are followed (martinfowler.com `div.paperBody` and `div.appendix`, Substack `div.body.markup`), minus static assets, Amazon and the author sponsorship page; a page with no recognisable body falls back to every link outside `nav`, `header` and `footer`. Sources already in `references/` and sources already accepted or rejected are dropped.
-- **evaluate** is the only agent stage. It scores up to `batch-cap` candidates for relevance and novelty against the knowledgebase.
-- **rank** is a script stage. It applies `threshold`. `none` closes the item unseen.
+- **harvest** is a script stage. New entries become tier 1 candidates; their outbound links become tier 2 candidates with an inbound-link count. Only links in the article body are followed (martinfowler.com `div.paperBody` and `div.appendix`, Substack `div.body.markup`), minus static assets, Amazon and the author sponsorship page; a page with no recognisable body falls back to every link outside `nav`, `header` and `footer`. Each link keeps its provenance (the post that linked it, the link text and the surrounding sentence). Links that never become sources are dropped: bare site homepages and YouTube, Wikipedia, LinkedIn and X or Twitter hosts. Unscored, undecided tier 2 rows the same rule flags are swept out. Sources already in `references/` and sources already accepted or rejected are dropped.
+- **evaluate** is the only agent stage. It scores up to `batch-cap` candidates for relevance and novelty against the knowledgebase. It also says when a page is mostly links out (a roundup) and names up to five linked pages worth following.
+- **Order.** Tier 1 candidates come first. Tier 2 follows by whether a scored roundup picked the link, then the best score among its scored parents, then inbound count, then first seen. A parent's own verdict does not matter. Picked links are scored at the next firing, not the one that picked them, because `batch-cap` bounds each firing. Rows with no provenance sort behind rows with a scored parent.
+- **rank** is a script stage. It applies `threshold`, records roundups and picks, and shows tier 2 survivors with `via <parent>: <context>`. `none` closes the item unseen.
 - **review-candidates** is the human gate. Accept, reject or defer each survivor; file a `kb-ingest` item per acceptance.
 - **record-decisions** is a script stage that writes the verdicts and any new feeds.
 
 ## State
 
-One SQLite file, `scout.db`, in the workflow's data directory, with `feeds`, `seen` and `decisions` tables. `scripts/lib/scout_state.py` owns the schema and every read and write; no script contains SQL. A declined source is never kept in the knowledgebase repo.
+One SQLite file, `scout.db`, in the workflow's data directory, with `feeds`, `seen`, `links` (which post linked which page, with anchor and context) and `decisions` tables. `scripts/lib/scout_state.py` owns the schema and every read and write; no script contains SQL. A declined source is never kept in the knowledgebase repo.
 
-`python3 scripts/scout-cli.py` (run with `LC_WORKFLOW_DATA_DIR` set) answers questions at the gate: `feeds`, `queue`, `why <url>`, `add-feed <url>`, `disable-feed <url>`, `enable-feed <url>`.
+`python3 scripts/scout-cli.py` (run with `LC_WORKFLOW_DATA_DIR` set) answers questions at the gate: `feeds`, `queue` (which also flags roundups and picks), `why <url>`, `add-feed <url>`, `disable-feed <url>`, `enable-feed <url>`.
 
 ## Operator setup
 
