@@ -21,7 +21,7 @@ One human gate on the normal path (the merge), one PR, one pass that closes with
 
 After `review-plan` approves, `write` builds exactly the approved plan on the phase branch. `check` is a script stage that spends no tokens: prettier, markdownlint, relative links, required frontmatter, reachability from an `index.md`, and every cited reference linked in the body, every `addresses:` path resolving, and each Problem doc's response list matching the docs that address it. `cold-read` stands in for a reader who has not read the source: it reads only the changed concept docs, explains each back and lists what is unclear, and `unclear` returns to `write`. `review` then reads the diff against the plan and the conventions. Then the generic PR machinery runs - `open-pr`, `poll-ci`, `watch-ci`, `await-merge` - and Ken's merge is the gate. Three `broken` results in a row from `check`, or the review rounds cap (which `review-plan`, `cold-read` and `review` share), route to `escalate`, which decides between `replan` and `abandoned`.
 
-`plan`, `review-plan` and `confirm-skip` are not PR-gated, but the phase block is all or nothing, so they share the `ingest` phase with everything after them and are handed a worktree they do not commit to. `cleanup`, `review-ci` and `await-merge` are this bundle's own step files (`kb-cleanup`, `kb-review-ci`, `kb-await-merge`): `cleanup` closes the item once the PR merges, and `review-ci` reworks a failing PR through `write`; `await-merge` also shows the source row so the merge gate is one row from the article.
+`plan`, `review-plan` and `confirm-skip` are not PR-gated, but the phase block is all or nothing, so they share the `ingest` phase with everything after them and are handed a worktree they do not commit to. `cleanup`, `review-ci` and `await-merge` are this bundle's own step files (`kb-cleanup`, `kb-review-ci`, `kb-await-merge`): `cleanup` is an engine-run script stage that closes the item once the PR merges, and `review-ci` reworks a failing PR through `write`; `await-merge` also shows the source row so the merge gate is one row from the article.
 
 The `maintain` hook refreshes Ken's local checkout hourly (`checkout-path`), fast-forwarding `main` and rebuilding the `qmd` index. It touches only that path, and only when it is on `main` and clean. This workflow keeps no state of its own: a source is already in when `references/` holds a file whose `resource:` is its URL.
 
@@ -99,6 +99,7 @@ edges:
   watch-ci          ci-failed      write
   watch-ci          review-rework  write
   await-merge       merged         cleanup
+  cleanup           done
   await-merge       changes        write
   await-merge       conflicted     resolve-conflict
   await-merge       gave-up        review-conflict
