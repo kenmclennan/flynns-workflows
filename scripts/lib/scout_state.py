@@ -6,7 +6,7 @@ import sys
 
 import workflow_config
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SEED_FEEDS = [
     ("https://martinfowler.com/feed.atom", "atom", 1, "emerging tools, organisational learning", "Martin Fowler, seed"),
@@ -55,6 +55,17 @@ def migrate(conn):
                 "url TEXT PRIMARY KEY, verdict TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', "
                 "decided_at TEXT NOT NULL, item_id TEXT NOT NULL DEFAULT '')"
             )
+        if version < 2:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS links ("
+                "url TEXT NOT NULL, parent TEXT NOT NULL, anchor TEXT NOT NULL DEFAULT '', "
+                "context TEXT NOT NULL DEFAULT '', first_seen TEXT NOT NULL, PRIMARY KEY (url, parent))"
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_links_parent ON links (parent)")
+            have = {r[1] for r in conn.execute("PRAGMA table_info(seen)").fetchall()}
+            for column in ("roundup", "picked"):
+                if column not in have:
+                    conn.execute("ALTER TABLE seen ADD COLUMN %s INTEGER NOT NULL DEFAULT 0" % column)
         conn.execute("PRAGMA user_version = %d" % SCHEMA_VERSION)
 
 
@@ -110,6 +121,42 @@ def record_candidate(conn, url, title, feed, tier, now, author=""):
 
 def bump_inbound(conn, url):
     conn.execute("UPDATE seen SET inbound = inbound + 1 WHERE url = ?", (url,))
+
+
+def record_link(conn, url, parent, anchor, context, now):
+    conn.execute(
+        "INSERT OR IGNORE INTO links (url, parent, anchor, context, first_seen) VALUES (?, ?, ?, ?, ?)",
+        (url, parent, anchor, context, now),
+    )
+
+
+def via(conn, url, limit):
+    return _rows(
+        conn.execute(
+            "SELECT l.parent AS parent, COALESCE(p.title, '') AS parent_title, l.anchor AS anchor, "
+            "l.context AS context, "
+            "CASE WHEN p.scored_at IS NOT NULL AND p.last_score IS NOT NULL THEN p.last_score ELSE -1 END AS parent_score "
+            "FROM links l LEFT JOIN seen p ON p.url = l.parent WHERE l.url = ? "
+            "ORDER BY parent_score DESC, l.first_seen ASC, l.parent ASC LIMIT ?",
+            (url, int(limit)),
+        )
+    )
+
+
+def parent_count(conn, url):
+    return conn.execute("SELECT COUNT(*) FROM links WHERE url = ?", (url,)).fetchone()[0]
+
+
+def drop_noise(conn, is_noise):
+    rows = conn.execute(
+        "SELECT s.url FROM seen s LEFT JOIN decisions d ON d.url = s.url "
+        "WHERE s.tier = 2 AND s.scored_at IS NULL AND d.url IS NULL"
+    ).fetchall()
+    dropped = [r[0] for r in rows if is_noise(r[0])]
+    for url in dropped:
+        conn.execute("DELETE FROM links WHERE url = ?", (url,))
+        conn.execute("DELETE FROM seen WHERE url = ?", (url,))
+    return dropped
 
 
 def candidates_pending(conn, limit):

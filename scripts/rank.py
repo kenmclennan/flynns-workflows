@@ -40,7 +40,20 @@ def digest(rows, kb_repo):
         "",
     ]
     for r in rows:
-        lines.append("- %s" % (r["title"] or r["url"]))
+        best = r.get("via") or []
+        first = r["title"] or r["url"]
+        if r["tier"] == 2 and best and not r["title"] and best[0]["anchor"]:
+            first = best[0]["anchor"]
+        lines.append("- %s" % first)
+        if r["tier"] == 2 and best:
+            top = best[0]
+            line = "  via %s" % (top["parent_title"] or top["parent"])
+            detail = top["context"] or top["anchor"]
+            if detail:
+                line += ": %s" % detail
+            if r["parents"] > 1:
+                line += " (+%d more)" % (r["parents"] - 1)
+            lines.append(line)
         lines.append("  link: %s" % r["url"])
         lines.append("  author: %s" % (r["author"] or "unknown"))
         lines.append("  tier %d, inbound trusted links %d, score %.2f" % (r["tier"], r["inbound"], r["last_score"]))
@@ -77,6 +90,9 @@ def main():
             for row in scout_state.rescorable(conn):
                 scout_state.rescore(conn, row["url"], now)
         survivors = scout_state.survivors_undecided(conn, threshold)
+        for r in survivors:
+            r["via"] = scout_state.via(conn, r["url"], 1)
+            r["parents"] = scout_state.parent_count(conn, r["url"])
     finally:
         conn.close()
 
