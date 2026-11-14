@@ -1,5 +1,5 @@
 ---
-summary: one approved source becomes a reviewed knowledgebase PR - an ingest plan is approved in the inbox, written, mechanically checked, reviewed, then merged by a human
+summary: one approved source becomes a reviewed knowledgebase PR - an agent reviews the ingest plan, then it is written, mechanically checked, cold-read and reviewed, and a human merges the PR
 when-to-use: capturing a URL (or a few related URLs) into the knowledgebase; file the item with `--repo kenmclennan/knowledgebase`
 lifecycle:
   install: scripts/kb-install.py
@@ -17,11 +17,11 @@ config-example:
 
 One item takes one approved source into the knowledgebase (`kenmclennan/knowledgebase`, an OKF bundle). Items are filed by hand for an on-demand ingest, or by the driver from a `kb-scout` or `kb-audit` gate; the workflow itself has no schedule. Every convention the steps must respect lives in the knowledgebase's own `CLAUDE.md`, and the steps point at it rather than restating it.
 
-Two human gates, one PR, one pass that closes with the item. `plan` reads the source or sources and the knowledgebase and writes the ingest plan as an item artifact; `review-plan` is the first gate and is read in the inbox, not on a PR, so no plan document ever lands in the knowledgebase - a merged plan would be workflow state sitting next to knowledge. `changes` and `escalate replan` return to `plan` as rework rounds in the same pass, so there is no `pass-end:`. A source already mirrored, or one that adds nothing, still produces a plan saying so and ends `planned`, so a human sees it and closes it with `rejected`.
+One human gate on the normal path (the merge), one PR, one pass that closes with the item. `plan` reads the source or sources and the knowledgebase and writes the ingest plan as an item artifact; `review-plan` is an agent that reads the plan against the knowledgebase's `CLAUDE.md`. The plan stays an item artifact, so no plan document ever lands in the knowledgebase - a merged plan would be workflow state sitting next to knowledge - and `write` quotes it in the PR body, so Ken judges the plan beside the diff. `changes`, `escalate replan` and `confirm-skip changes` return to `plan` as rework rounds in the same pass, so there is no `pass-end:`. A source already mirrored, or one that adds nothing, ends `plan` with `nothing-to-add` and reaches a second human gate, `confirm-skip`, where a human closes it with `rejected`.
 
-After approval, `write` builds exactly the approved plan on the phase branch. `check` is a script stage that spends no tokens: prettier, markdownlint, relative links, required frontmatter, reachability from an `index.md`, and every cited reference linked in the body, every `addresses:` path resolving, and each Problem doc's response list matching the docs that address it. `cold-read` stands in for a reader who has not read the source: it reads only the changed concept docs, explains each back and lists what is unclear, and `unclear` returns to `write`. `review` then reads the diff against the plan and the conventions. Then the generic PR machinery runs - `open-pr`, `poll-ci`, `watch-ci`, `await-merge` - and Ken's merge is the second gate. Three `broken` results in a row from `check`, or the review rounds cap (which `cold-read` and `review` share), route to `escalate`, which decides between `replan` and `abandoned`.
+After `review-plan` approves, `write` builds exactly the approved plan on the phase branch. `check` is a script stage that spends no tokens: prettier, markdownlint, relative links, required frontmatter, reachability from an `index.md`, and every cited reference linked in the body, every `addresses:` path resolving, and each Problem doc's response list matching the docs that address it. `cold-read` stands in for a reader who has not read the source: it reads only the changed concept docs, explains each back and lists what is unclear, and `unclear` returns to `write`. `review` then reads the diff against the plan and the conventions. Then the generic PR machinery runs - `open-pr`, `poll-ci`, `watch-ci`, `await-merge` - and Ken's merge is the gate. Three `broken` results in a row from `check`, or the review rounds cap (which `review-plan`, `cold-read` and `review` share), route to `escalate`, which decides between `replan` and `abandoned`.
 
-`plan` and `review-plan` are not PR-gated, but the phase block is all or nothing, so they share the `ingest` phase with everything after them and are handed a worktree they do not commit to. `cleanup`, `review-ci` and `await-merge` are this bundle's own step files (`kb-cleanup`, `kb-review-ci`, `kb-await-merge`): `cleanup` closes the item once the PR merges, and `review-ci` reworks a failing PR through `write`; `await-merge` also shows the source row so the merge gate is one row from the article.
+`plan`, `review-plan` and `confirm-skip` are not PR-gated, but the phase block is all or nothing, so they share the `ingest` phase with everything after them and are handed a worktree they do not commit to. `cleanup`, `review-ci` and `await-merge` are this bundle's own step files (`kb-cleanup`, `kb-review-ci`, `kb-await-merge`): `cleanup` closes the item once the PR merges, and `review-ci` reworks a failing PR through `write`; `await-merge` also shows the source row so the merge gate is one row from the article.
 
 The `maintain` hook refreshes Ken's local checkout hourly (`checkout-path`), fast-forwarding `main` and rebuilding the `qmd` index. It touches only that path, and only when it is on `main` and clean. This workflow keeps no state of its own: a source is already in when `references/` holds a file whose `resource:` is its URL.
 
@@ -34,6 +34,7 @@ workspace: project
 phase:
   plan              ingest
   review-plan       ingest
+  confirm-skip      ingest
   write             ingest
   check             ingest
   cold-read         ingest
@@ -51,7 +52,8 @@ phase:
 
 display:
   plan              Planning the ingest
-  review-plan       Review the ingest plan
+  review-plan       Reviewing the ingest plan
+  confirm-skip      Nothing to ingest
   write             Writing the ingest
   check             Checking the bundle
   cold-read         Cold-reading the docs
@@ -74,8 +76,11 @@ nodes:
 
 edges:
   plan              planned        review-plan       primary
+  plan              nothing-to-add confirm-skip
   review-plan       approved       write             primary
   review-plan       changes        plan
+  review-plan       escalate       escalate
+  confirm-skip      changes        plan
   write             done           check             primary
   check             clean          cold-read         primary
   check             broken         write
@@ -121,12 +126,15 @@ hooks:
   ci_failure            poll-ci      failed
   ci_failed_cap         check        broken         3  escalate
   ci_failed_cap         watch-ci     ci-failed      3  review-ci
+  review_rounds_cap     review-plan  changes           escalate
   review_rounds_cap     cold-read    unclear           escalate
   review_rounds_cap     review       rejected          escalate
   review_rounds_cap     watch-ci     review-rework     review-ci
   mention_token         await-merge  @lc
 
 signals:
+  review-plan       review_rounds     changes
+  review-plan       resets            changes
   cold-read         review_rounds     unclear
   cold-read         resets            unclear
   review            review_rounds     rejected
