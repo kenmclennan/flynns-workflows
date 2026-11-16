@@ -4,7 +4,10 @@ import http.client
 import os
 import re
 import shlex
+import socket
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -13,6 +16,9 @@ from html.parser import HTMLParser
 import safe_run
 
 FIRST_RUN_ENTRIES = 5
+FETCH_TIMEOUT = 30
+RETRY_PAUSE = 2
+TRANSIENT_STATUS = (502, 503, 504)
 
 
 def normalize(url):
@@ -25,20 +31,31 @@ def host(url):
     return urllib.parse.urlsplit(url).netloc.lower()
 
 
-def fetch(url, command=None):
+def is_transient(exc):
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in TRANSIENT_STATUS
+    return isinstance(exc, (urllib.error.URLError, socket.timeout, ConnectionError))
+
+
+def fetch(url, command=None, opener=None):
     if command:
         proc = safe_run.run(shlex.split(command) + [url], network=True)
         if proc.returncode != 0:
             sys.stderr.write("fetch failed for %s (exit %d): %s\n" % (url, proc.returncode, proc.stderr.strip()[-200:]))
             return None
         return proc.stdout
-    try:
-        request = urllib.request.Request(url, headers={"User-Agent": "flynns-workflows-kb-scout"})
-        with urllib.request.urlopen(request, timeout=30) as response:
-            return response.read().decode("utf-8", errors="replace")
-    except (OSError, ValueError, http.client.HTTPException) as exc:
-        sys.stderr.write("fetch failed for %s: %s\n" % (url, exc))
-        return None
+    opener = opener or urllib.request.urlopen
+    request = urllib.request.Request(url, headers={"User-Agent": "flynns-workflows-kb-scout"})
+    for attempt in (1, 2):
+        try:
+            with opener(request, timeout=FETCH_TIMEOUT) as response:
+                return response.read().decode("utf-8", errors="replace")
+        except (OSError, ValueError, http.client.HTTPException) as exc:
+            if attempt == 1 and is_transient(exc):
+                time.sleep(RETRY_PAUSE)
+                continue
+            sys.stderr.write("fetch failed for %s: %s\n" % (url, exc))
+            return None
 
 
 def _local(tag):
