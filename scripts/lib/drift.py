@@ -3,9 +3,9 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 
+import safe_run
 import workflow_config
 
 LAYOUT_VERSION = 1
@@ -69,7 +69,7 @@ def git(*args, git_dir=None, check=True):
         cmd += ["--git-dir", git_dir]
     cmd += list(args)
     env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
-    proc = subprocess.run(cmd, capture_output=True, env=env)
+    proc = safe_run.run(cmd, env=env, text=False)
     if check and proc.returncode != 0:
         raise RuntimeError("git %s failed: %s" % (" ".join(args), proc.stderr.decode(errors="replace").strip()))
     return proc
@@ -144,7 +144,7 @@ def snapshot(name, sha):
     shutil.rmtree(tmp, ignore_errors=True)
     os.makedirs(tmp)
     archive = git("archive", "--format=tar", sha, git_dir=clone_path(name)).stdout
-    proc = subprocess.run(["tar", "-x", "-C", tmp], input=archive, capture_output=True)
+    proc = safe_run.run(["tar", "-x", "-C", tmp], input=archive, text=False)
     if proc.returncode != 0:
         shutil.rmtree(tmp, ignore_errors=True)
         raise RuntimeError("tar failed: %s" % proc.stderr.decode(errors="replace").strip())

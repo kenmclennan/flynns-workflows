@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 import json
 import os
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
 import delivered
 import delivered_state as ds
+import safe_run
 
 
 def list_issues(gh, repo):
     cmd = [gh, "issue", "list", "--repo", repo, "--state", "open", "--limit", "200",
            "--json", "number,title,url"]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = safe_run.run(cmd, network=True)
     if proc.returncode != 0:
         delivered.fail("gh failed for %s (exit %d): %s" % (repo, proc.returncode, proc.stderr))
     return json.loads(proc.stdout or "[]")

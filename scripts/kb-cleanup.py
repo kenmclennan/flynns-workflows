@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 import json
-import subprocess
+import os
 import sys
 
-proc = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+
+import safe_run
+
+proc = safe_run.run(["git", "status", "--porcelain"])
 if proc.returncode != 0:
     print(f"git status failed: {proc.stderr.strip()}", file=sys.stderr)
     sys.exit(1)

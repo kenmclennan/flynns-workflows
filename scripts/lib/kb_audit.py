@@ -5,13 +5,13 @@ import os
 import posixpath
 import re
 import shutil
-import subprocess
 import sys
 import tarfile
 
 from kb_doc import address_paths, body_links, resolve, resolve_address, source_resources, split_frontmatter, top_level_keys
 
 import kb_audit_state
+import safe_run
 import workflow_config
 
 RESERVED = ("index.md", "log.md")
@@ -57,7 +57,7 @@ def git(*args, git_dir=None, check=True):
     if git_dir:
         cmd += ["--git-dir", git_dir]
     cmd += list(args)
-    proc = subprocess.run(cmd, capture_output=True, env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+    proc = safe_run.run(cmd, env=dict(os.environ, GIT_TERMINAL_PROMPT="0"), text=False)
     if check and proc.returncode != 0:
         raise RuntimeError("git %s failed: %s" % (" ".join(args), proc.stderr.decode(errors="replace").strip()))
     return proc
@@ -366,7 +366,7 @@ def run_tool(name, command, files, root):
     chunks = []
     for start in range(0, len(files), CHUNK):
         try:
-            proc = subprocess.run(command + files[start:start + CHUNK], capture_output=True, text=True, cwd=root)
+            proc = safe_run.run(command + files[start:start + CHUNK], cwd=root)
         except FileNotFoundError:
             raise RuntimeError("%s needs `npx`, which is not on PATH" % name) from None
         if proc.returncode not in (0, 1):

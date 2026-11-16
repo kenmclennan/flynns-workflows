@@ -2,13 +2,13 @@
 import json
 import os
 import re
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
 import delivered
 import delivered_state as ds
+import safe_run
 import scout_state
 
 REF = re.compile(r"^([^/\s]+/[^#\s]+)#(\d+)$")
@@ -33,7 +33,7 @@ def load_approved(stdin):
 
 
 def is_open(gh, repo, number):
-    out = delivered.run([gh, "issue", "view", str(number), "--repo", repo, "--json", "state"])
+    out = delivered.run([gh, "issue", "view", str(number), "--repo", repo, "--json", "state"], network=True)
     return str(json.loads(out).get("state", "")).upper() == "OPEN"
 
 
@@ -60,10 +60,10 @@ def main():
         if not is_open(gh, repo, number):
             skipped.append("%s (already closed)" % ref)
             continue
-        proc = subprocess.run(
+        proc = safe_run.run(
             [gh, "issue", "close", str(number), "--repo", repo,
              "--comment", delivered.comment(items, repo)],
-            capture_output=True, text=True,
+            write=True,
         )
         if proc.returncode != 0:
             delivered.fail("gh issue close %s failed (exit %d): %s" % (ref, proc.returncode, proc.stderr))

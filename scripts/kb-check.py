@@ -3,11 +3,11 @@ import json
 import os
 import posixpath
 import re
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
+import safe_run
 from kb_doc import address_paths, body_links, resolve, resolve_address, source_resources, split_frontmatter, top_level_keys
 
 BASE = os.environ.get("KB_CHECK_BASE", "origin/main")
@@ -15,7 +15,7 @@ RESERVED = ("index.md", "log.md")
 
 
 def git(*args):
-    proc = subprocess.run(["git", *args], capture_output=True, text=True)
+    proc = safe_run.run(["git", *args])
     if proc.returncode != 0:
         sys.stderr.write("git %s failed: %s\n" % (" ".join(args), proc.stderr.strip()))
         sys.exit(1)
@@ -113,7 +113,7 @@ def reachable_from_root():
 
 def tool_findings(name, command, files):
     try:
-        proc = subprocess.run(command + files, capture_output=True, text=True)
+        proc = safe_run.run(command + files)
     except FileNotFoundError:
         sys.stderr.write("%s needs `npx`, which is not on PATH\n" % name)
         sys.exit(1)
