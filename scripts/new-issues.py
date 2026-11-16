@@ -3,11 +3,11 @@ import datetime
 import json
 import os
 import re
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
+import safe_run
 import triage_state
 
 FIELDS = "number,title,author,url,body,labels,updatedAt"
@@ -35,7 +35,7 @@ def fetch(gh, repo, since):
         gh, "issue", "list", "--repo", repo, "--state", "open",
         "--search", "updated:>=" + since, "--limit", "100", "--json", FIELDS,
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = safe_run.run(cmd, network=True)
     if proc.returncode != 0:
         sys.stderr.write("gh failed for %s (exit %d): %s\n" % (repo, proc.returncode, proc.stderr))
         sys.exit(1)

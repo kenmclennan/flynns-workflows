@@ -1,8 +1,9 @@
 import hashlib
 import json
 import re
-import subprocess
 import sys
+
+import safe_run
 
 EXCLUDED_WORKFLOWS = {"triage-github-issues", "close-delivered-issues"}
 SEARCH_LINE = re.compile(r"^([A-Za-z][A-Za-z0-9]*-[0-9][0-9.]*)\s")
@@ -14,8 +15,8 @@ def fail(message):
     sys.exit(1)
 
 
-def run(cmd):
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+def run(cmd, network=False):
+    proc = safe_run.run(cmd, network=network)
     if proc.returncode != 0:
         fail("%s failed (exit %d): %s" % (" ".join(cmd[:3]), proc.returncode, proc.stderr))
     return proc.stdout

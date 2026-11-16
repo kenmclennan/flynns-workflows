@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 import os
 import shlex
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
+import safe_run
 import workflow_config
 
 
-def run(args, cwd):
-    return subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+QMD_TIMEOUTS = {"update": 300, "embed": 1800}
+
+
+def run(args, cwd, timeout=None):
+    return safe_run.run(args, cwd=cwd, timeout=timeout)
 
 
 def skip(reason):
@@ -33,7 +36,7 @@ def main():
         skip("fast-forward pull failed: %s" % pull.stderr.strip()[-200:])
     for verb in ("update", "embed"):
         try:
-            proc = run(qmd + [verb], path)
+            proc = run(qmd + [verb], path, timeout=QMD_TIMEOUTS[verb])
         except FileNotFoundError:
             skip("qmd is not available")
         if proc.returncode != 0:

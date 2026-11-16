@@ -4,12 +4,13 @@ import http.client
 import os
 import re
 import shlex
-import subprocess
 import sys
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
+
+import safe_run
 
 FIRST_RUN_ENTRIES = 5
 
@@ -26,7 +27,7 @@ def host(url):
 
 def fetch(url, command=None):
     if command:
-        proc = subprocess.run(shlex.split(command) + [url], capture_output=True, text=True)
+        proc = safe_run.run(shlex.split(command) + [url], network=True)
         if proc.returncode != 0:
             sys.stderr.write("fetch failed for %s (exit %d): %s\n" % (url, proc.returncode, proc.stderr.strip()[-200:]))
             return None
