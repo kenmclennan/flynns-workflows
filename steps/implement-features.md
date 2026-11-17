@@ -1,4 +1,5 @@
 ---
+principal-output: code
 model: sonnet
 accepts:
   work-item: optional

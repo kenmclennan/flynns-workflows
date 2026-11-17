@@ -1,4 +1,5 @@
 ---
+principal-output: feature
 model: sonnet
 accepts:
   work-item: optional
