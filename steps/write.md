@@ -1,4 +1,5 @@
 ---
+principal-output: document
 model: sonnet
 accepts:
   plan: optional

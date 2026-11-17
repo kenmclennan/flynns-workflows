@@ -1,4 +1,5 @@
 ---
+principal-output: plan
 model: sonnet
 accepts:
   blueprint: required
