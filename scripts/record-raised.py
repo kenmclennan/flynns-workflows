@@ -19,10 +19,11 @@ def load_state(stdin):
         state = json.loads(raw)
         issues = [(i["repo"], int(i["number"])) for i in state["issues"]]
         marks = {str(r): str(m) for r, m in state["marks"].items()}
+        comments = [(str(c["repo"]), int(c["number"]), str(c["mark"])) for c in state.get("comments", [])]
     except (ValueError, KeyError, TypeError, AttributeError) as exc:
         sys.stderr.write("schedule_state is not a valid issues-and-marks object: %r\n" % (exc,))
         sys.exit(1)
-    return issues, marks
+    return issues, marks, comments
 
 
 def main():
@@ -31,7 +32,7 @@ def main():
     except ValueError as exc:
         sys.stderr.write("stdin is not JSON: %s\n" % exc)
         sys.exit(1)
-    issues, marks = load_state(stdin)
+    issues, marks, comments = load_state(stdin)
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     conn = triage_state.connect()
@@ -46,6 +47,12 @@ def main():
                 "INSERT INTO marks (repo, high_water) VALUES (?, ?) "
                 "ON CONFLICT(repo) DO UPDATE SET high_water = MAX(high_water, excluded.high_water)",
                 list(marks.items()),
+            )
+            conn.executemany(
+                "INSERT INTO comment_marks (repo, number, high_water) "
+                "SELECT repo, number, ? FROM raised WHERE repo = ? AND number = ? "
+                "ON CONFLICT(repo, number) DO UPDATE SET high_water = MAX(high_water, excluded.high_water)",
+                [(m, r, n) for r, n, m in comments],
             )
     except (sqlite3.Error, OSError) as exc:
         sys.stderr.write("could not record raised issues: %s\n" % exc)

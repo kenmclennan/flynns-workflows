@@ -11,8 +11,14 @@ def main():
     if os.environ.get("FAKE_GH_FAIL"):
         sys.stderr.write("fake gh: simulated failure\n")
         sys.exit(4)
-    repo = args[args.index("--repo") + 1]
     directory = os.environ.get("FAKE_GH_RECORDINGS", os.path.join(HERE, "recordings"))
+    if args[:2] == ["api", "graphql"]:
+        fields = dict(a.split("=", 1) for a in args if "=" in a and not a.startswith("query="))
+        path = os.path.join(directory, "%s__%s.graphql.json" % (fields["owner"] + "__" + fields["name"], fields["number"]))
+        with open(path) as handle:
+            sys.stdout.write(handle.read())
+        return
+    repo = args[args.index("--repo") + 1]
     if args[:2] in (["issue", "view"], ["issue", "close"]):
         ref = "%s#%s" % (repo, args[2])
         closed_path = os.path.join(directory, "closed.json")

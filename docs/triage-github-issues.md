@@ -1,6 +1,6 @@
 # Triage-github-issues
 
-Surfaces open GitHub issues on the lightcycle repos that were not raised before. It raises one inbox item listing them. No agent runs anywhere in the flow, so a firing with nothing new and a firing with something new both spend no tokens.
+Surfaces open GitHub issues on the lightcycle repos that were not raised before, and raised issues with new comments. It raises one inbox item listing them. No agent runs anywhere in the flow, so a firing with nothing new and a firing with something new both spend no tokens.
 
 **Use it when** an operator enables its suggested schedule (`0 9,14 * * 1-5`, named `triage`). It is not filed by hand. The bundle never enables the schedule; an operator does, in config.
 
@@ -27,8 +27,8 @@ guard: scripts/new-issues.py (passes when an issue was not raised before)
 
 ## Stages
 
-- **Guard** (`scripts/new-issues.py`) looks for open issues on the configured repos that were not raised before, and fails when there are none.
-- **record-raised** is a script stage. It marks every listed issue raised in `triage.db` and advances each repo's high-water mark, before the gate. `triaged`, `abandoned` and an item closed by hand therefore all leave the issues marked, and they never come back.
+- **Guard** (`scripts/new-issues.py`) looks for open issues on the configured repos that were not raised before, and for raised issues with new comments (a `New comments` section), and fails when there are none. A raised issue whose listing holds 100 comments, the most `gh issue list` returns and the oldest ones, is refetched through `gh api graphql` for its newest 100.
+- **record-raised** is a script stage. It marks every listed issue raised in `triage.db` advances each repo's high-water mark and records the newest comment surfaced per commented issue, before the gate. `triaged`, `abandoned` and an item closed by hand therefore all leave the issues and comments marked, and they never come back.
 - **triage** is the human gate. For each issue decide to reply on GitHub, file an `lc` item, close it as won't-fix, or leave it. When an issue reports a defect, name the causing item only if that is established. Deferring means filing a follow-up, since the issue will not be listed again. `triaged` and `abandoned` both close the item.
 
 ## Operator setup

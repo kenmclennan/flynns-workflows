@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import workflow_config
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 def data_dir():
     return os.environ.get("LC_WORKFLOW_DATA_DIR") or os.getcwd()
@@ -34,6 +34,12 @@ def migrate(conn):
             )
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS marks (repo TEXT PRIMARY KEY, high_water TEXT NOT NULL)"
+            )
+        if version < 2:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS comment_marks ("
+                "repo TEXT NOT NULL, number INTEGER NOT NULL, high_water TEXT NOT NULL, "
+                "PRIMARY KEY (repo, number))"
             )
         conn.execute("PRAGMA user_version = %d" % SCHEMA_VERSION)
 
