@@ -1,6 +1,6 @@
 # Kb-ingest
 
-Takes one approved source into the knowledgebase (`kenmclennan/knowledgebase`) through a plan, a PR and a human merge. File an item for it with `--repo kenmclennan/knowledgebase` and the source URL or URLs in the brief.
+Takes one approved source into the knowledgebase (`kenmclennan/engineering-practice`) through a plan, a PR and a human merge. File an item for it with `--repo kenmclennan/engineering-practice` and the source URL or URLs in the brief.
 
 - **plan** reads the source and the knowledgebase and writes the ingest plan as an item artifact: the reference mirror, each new concept doc, each fold, each supersession, and the cross-links in both directions.
 - **confirm-skip** is a human gate reached only when `plan` finds the source already in or adding nothing: `rejected` ends the item, `changes` returns to plan.
