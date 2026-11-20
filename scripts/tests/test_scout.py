@@ -613,7 +613,7 @@ class StageTests(Base):
         out = self.rank(scores)
         self.assertEqual(out["outcome"], "survivors")
         digest = out["artifacts"]["candidates-digest"]
-        self.assertIn("--repo kenmclennan/knowledgebase", digest)
+        self.assertIn("--repo kenmclennan/engineering-practice", digest)
         self.assertIn("tier 1, inbound trusted links 0, score 9.", digest)
         self.assertNotIn(READING, digest)
         self.assertEqual(self.rank([], threshold="99")["outcome"], "none")

@@ -1,6 +1,6 @@
 ---
 summary: one approved source becomes a reviewed knowledgebase PR - an agent reviews the ingest plan, then it is written, mechanically checked, cold-read and reviewed, and a human merges the PR
-when-to-use: capturing a URL (or a few related URLs) into the knowledgebase; file the item with `--repo kenmclennan/knowledgebase`
+when-to-use: capturing a URL (or a few related URLs) into the knowledgebase; file the item with `--repo kenmclennan/engineering-practice`
 lifecycle:
   install: scripts/kb-install.py
   maintain: scripts/kb-maintain.py
@@ -15,7 +15,7 @@ config-example:
 
 # Kb-ingest
 
-One item takes one approved source into the knowledgebase (`kenmclennan/knowledgebase`, an OKF bundle). Items are filed by hand for an on-demand ingest, or by the driver from a `kb-scout` or `kb-audit` gate; the workflow itself has no schedule. Every convention the steps must respect lives in the knowledgebase's own `CLAUDE.md`, and the steps point at it rather than restating it.
+One item takes one approved source into the knowledgebase (`kenmclennan/engineering-practice`, an OKF bundle). Items are filed by hand for an on-demand ingest, or by the driver from a `kb-scout` or `kb-audit` gate; the workflow itself has no schedule. Every convention the steps must respect lives in the knowledgebase's own `CLAUDE.md`, and the steps point at it rather than restating it.
 
 One human gate on the normal path (the merge), one PR, one pass that closes with the item. `plan` reads the source or sources and the knowledgebase and writes the ingest plan as an item artifact; `review-plan` is an agent that reads the plan against the knowledgebase's `CLAUDE.md`. The plan stays an item artifact, so no plan document ever lands in the knowledgebase - a merged plan would be workflow state sitting next to knowledge - and `write` quotes it in the PR body, so Ken judges the plan beside the diff. `changes`, `escalate replan` and `confirm-skip changes` return to `plan` as rework rounds in the same pass, so there is no `pass-end:`. `escalate rework` returns to `write` the same way. A source already mirrored, or one that adds nothing, ends `plan` with `nothing-to-add` and reaches a second human gate, `confirm-skip`, where a human closes it with `rejected`.
 

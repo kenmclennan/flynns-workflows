@@ -1,6 +1,6 @@
 # Kb-audit
 
-A weekly audit of the knowledgebase (`kenmclennan/knowledgebase`). It raises one inbox item listing stale, unlinked and badly formatted docs, and files and edits nothing itself.
+A weekly audit of the knowledgebase (`kenmclennan/engineering-practice`). It raises one inbox item listing stale, unlinked and badly formatted docs, and files and edits nothing itself.
 
 - **guard** (`scripts/kb-tip-moved.py`) passes only when the knowledgebase's `main` tip differs from the last audited sha. An unchanged knowledgebase files nothing and spends nothing.
 - **measure** is a script stage that spends no tokens. Over a snapshot of the tip it lists unresolved links, unreachable docs, island topics, Related lists over eight entries, `addresses:` paths that do not resolve, problem docs out of step with the docs that address them, uncited references, citations with no body link, root index counts that disagree with the topic, passed `stale_after` dates, and prettier and markdownlint counts by topic.

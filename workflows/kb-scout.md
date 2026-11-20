@@ -18,7 +18,7 @@ config:
 config-example:
   threshold: 6.0
   batch-cap: 10
-  kb-repo: kenmclennan/knowledgebase
+  kb-repo: kenmclennan/engineering-practice
   checkout-path: /path/to/knowledgebase
   qmd-command: scripts/tests/fake-qmd.py
   fetch-command: scripts/tests/fake-fetch.py
