@@ -16,7 +16,6 @@ import workflow_config
 from stage_env import declared, examples, step_keys, variable, workflow_env, with_environment
 
 WORKFLOWS = (
-    "blueprint-delivery",
     "close-delivered-issues",
     "kb-audit",
     "kb-ingest",
