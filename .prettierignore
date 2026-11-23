@@ -1,1 +1,3 @@
+# Permanent exclusions
+# Workflow files: their workspace and display blocks align columns by hand, and prettier folds those lines into one.
 workflows/*.md
